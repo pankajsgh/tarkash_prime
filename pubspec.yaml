@@ -38,6 +38,8 @@ dependencies:
   dio: ^5.11.0
   device_info_plus: ^13.2.0
   image_picker: ^1.2.3
+  pdf: ^3.11.3
+  printing: ^5.14.2
 
 
 dev_dependencies:

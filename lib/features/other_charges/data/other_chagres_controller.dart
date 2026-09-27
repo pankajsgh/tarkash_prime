@@ -3,7 +3,7 @@ import 'package:calculation_panel/core/network/api_repository.dart';
 import 'package:calculation_panel/core/vars/global_vars.dart';
 import 'package:calculation_panel/core/widget/toast.dart';
 import 'package:calculation_panel/core/widget/widget_updater.dart';
-import 'package:calculation_panel/core/database/sql_database_manager.dart';
+import 'package:calculation_panel/core/database/sql_databaes/extra_charge_database.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
@@ -47,7 +47,6 @@ class OtherChargeController extends ChangeNotifier {
   String calculationType = 'Amount';
   String appliedOn = 'Item Wise';
   String distributionMethod = 'By Amount';
-  String taxTreatment = 'Taxable';
 
   bool allowManualChange = true;
   bool isActive = true;
@@ -126,7 +125,6 @@ class OtherChargeController extends ChangeNotifier {
     calculationType = defaultCalculationType;
     appliedOn = defaultAppliedOn;
     distributionMethod = defaultDistributionMethod;
-    taxTreatment = defaultTaxTreatment;
 
     allowManualChange = true;
     isActive = true;
@@ -152,14 +150,12 @@ class OtherChargeController extends ChangeNotifier {
 
     chargeNameController.text = value.chargeName?.toString() ?? '';
     printNameController.text = value.printName?.toString() ?? '';
-    defaultValueController.text =
-        value.defaultValue?.toString() ?? defaultValue;
+    defaultValueController.text = value.defaultValue?.toString() ?? defaultValue;
 
     // Charge Type
     final selectedChargeType = value.chargeType?.toString().trim() ?? '';
 
     chargeType = selectedChargeType.isEmpty ? null : selectedChargeType;
-
     // HSN
     final selectedHsn = value.hsn?.toString().trim() ?? '';
 
@@ -182,9 +178,6 @@ class OtherChargeController extends ChangeNotifier {
       value.distributionMethod,
       defaultDistributionMethod,
     );
-
-    // Tax Treatment
-    taxTreatment = _valueOrDefault(value.taxTreatment, defaultTaxTreatment);
 
     // Manual Change
     allowManualChange = value.allowManualChange?.toString() == '1';
@@ -213,8 +206,7 @@ class OtherChargeController extends ChangeNotifier {
       final query = search.trim();
 
       if (GlobalVars.isOffline) {
-        final data = await DatabaseHelper.instance.getExtraCharges(query);
-
+        final data = await ExtraChargeDatabase.instance.search(query);
         final charges = data
             .map(
               (item) =>
@@ -328,11 +320,6 @@ class OtherChargeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setTaxTreatment(String value) {
-    taxTreatment = value;
-    notifyListeners();
-  }
-
   void setAllowManualChange(bool value) {
     allowManualChange = value;
     notifyListeners();
@@ -431,14 +418,9 @@ class OtherChargeController extends ChangeNotifier {
         'calculation_type': calculationType,
         'applied_on': appliedOn,
         'distribution_method': distributionMethod,
-        'tax_treatment': taxTreatment,
-
         'hsn': appliedOn == 'Separate' ? hsn?.trim() ?? '' : '',
-
         'hsn_tax': appliedOn == 'Separate' ? hsnTax?.trim() ?? '' : '',
-
         'allow_manual_change': allowManualChange ? '1' : '0',
-
         'is_active': isActive ? '1' : '0',
       };
 
@@ -454,12 +436,14 @@ class OtherChargeController extends ChangeNotifier {
         int chargeId;
 
         if (isEditMode) {
-          chargeId = await DatabaseHelper.instance.updateExtraCharge(
+          chargeId = await ExtraChargeDatabase.instance.update(
             int.parse(id!),
             formData,
           );
         } else {
-          chargeId = await DatabaseHelper.instance.insertExtraCharge(formData);
+          chargeId = await ExtraChargeDatabase.instance.insert(
+            formData,
+          );
         }
 
         debugPrint('Other charge saved. ID: $chargeId');
@@ -562,7 +546,7 @@ class OtherChargeController extends ChangeNotifier {
       // -----------------------------------------------------------------------
 
       if (GlobalVars.isOffline) {
-        final deletedId = await DatabaseHelper.instance.deleteExtraCharge(
+        final deletedId = await ExtraChargeDatabase.instance.delete(
           int.parse(chargeId),
         );
 

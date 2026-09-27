@@ -328,9 +328,10 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
 
             const SizedBox(width: 4),
 
-        Expanded(
+            Expanded(
               flex: 1,
-              child:  item.selectChargeName?.calculationType.trim()!= 'Amount'? YourWidget(
+              child: item.id.isNotEmpty && item.selectChargeName?.calculationType.trim()!= 'Amount'? YourWidget(
+
                   initValue: item.itemValue.amount.toString(),
                   hint: '0.00',
                   showSuffix: item.selectChargeName?.calculationType.trim() == 'Percentage (%)'?true:false ,
@@ -338,7 +339,7 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
                   onChanged: (value) {
                     purchaseController.extraChargeController.updateAmount(item.id, value,);
                   },
-                  enable: true,
+                  enable: item.id.isNotEmpty,
               ):SizedBox()
             ),
             // AMOUNT
@@ -494,8 +495,6 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
     purchaseController.setAdditionalDiscountByCat(controller.discountListsByCat());
 
     purchaseController.setAdditionalCharge(totalCharges);
-    print("this is good 55555");
-    print(controller.totalChargeListsByCat());
     purchaseController.setAdditionalChargeByCat(controller.totalChargeListsByCat());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       purchaseController.updateSummery.update();

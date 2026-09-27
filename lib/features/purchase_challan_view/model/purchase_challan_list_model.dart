@@ -4,7 +4,7 @@ class PurchaseChallanListModel {
   final String gstNo;
 
   final String storeId;
-  final String storeName;
+  String storeName;
 
   final String challanNo;
   final String challanDate;
@@ -13,10 +13,10 @@ class PurchaseChallanListModel {
   final String lrDate;
 
   final String transportId;
-  final String transportName;
+  String transportName;
 
   final String agentId;
-  final String agentName;
+  String agentName;
 
   final int itemCount;
 
@@ -36,7 +36,7 @@ class PurchaseChallanListModel {
   final String createdAt;
   final String updatedAt;
 
-  const PurchaseChallanListModel({
+  PurchaseChallanListModel({
     required this.id,
     required this.supplierId,
     required this.gstNo,

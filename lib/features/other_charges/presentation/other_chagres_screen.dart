@@ -3,13 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../components/custome_dropdown_widget.dart';
-import '../../dashboard/presentaion/erp_top_header.dart';
 import '../data/model/other_charge_model.dart';
 import '../data/other_chagres_controller.dart';
 
 class CreateOtherChargeScreen extends StatefulWidget {
   final OtherChargeModel? chargeData;
-  const CreateOtherChargeScreen({super.key, this.chargeData});
+
+  const CreateOtherChargeScreen({
+    super.key,
+    this.chargeData,
+  });
 
   @override
   State<CreateOtherChargeScreen> createState() =>
@@ -19,47 +22,58 @@ class CreateOtherChargeScreen extends StatefulWidget {
 class _CreateOtherChargeScreenState
     extends State<CreateOtherChargeScreen> {
   late final OtherChargeController controller;
-  Timer? _searchDebounce;
-// ===========================================================================
-// COLORS
-// ===========================================================================
 
-  static const Color primary = Color(0xFF246BCE);
-  static const Color dark = Color(0xFF172B4D);
+  Timer? _searchDebounce;
+
+  // =========================================================================
+  // COLORS
+  // =========================================================================
+
+  static const Color primary = Color(0xFF2563EB);
+  static const Color primaryLight = Color(0xFFEFF6FF);
+
+  static const Color dark = Color(0xFF172033);
   static const Color text = Color(0xFF344054);
   static const Color muted = Color(0xFF667085);
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color background = Color(0xFFF6F8FB);
+
+  static const Color border = Color(0xFFD9E0EA);
+  static const Color borderLight = Color(0xFFE9EDF3);
+
+  static const Color background = Color(0xFFF4F6F9);
+  static const Color white = Colors.white;
+
   static const Color green = Color(0xFF16A05D);
   static const Color red = Color(0xFFD92D20);
 
-// ===========================================================================
-// INIT
-// ===========================================================================
+  // =========================================================================
+  // INIT
+  // =========================================================================
 
   @override
   void initState() {
     super.initState();
+
     controller = OtherChargeController();
 
     controller.chargeNameController.addListener(_refresh);
     controller.printNameController.addListener(_refresh);
     controller.defaultValueController.addListener(_refresh);
 
-    if(widget.chargeData !=null)
-      {
-       controller.setChargeName(widget.chargeData);
-
-      }
-
+    if (widget.chargeData != null) {
+      controller.setChargeName(widget.chargeData);
+    }
   }
 
   void _refresh() {
+    if (!mounted) return;
+
     controller.notifyListeners();
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+
     controller.chargeNameController.removeListener(_refresh);
     controller.printNameController.removeListener(_refresh);
     controller.defaultValueController.removeListener(_refresh);
@@ -69,9 +83,9 @@ class _CreateOtherChargeScreenState
     super.dispose();
   }
 
-// ===========================================================================
-// BUILD
-// ===========================================================================
+  // =========================================================================
+  // BUILD
+  // =========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -80,99 +94,16 @@ class _CreateOtherChargeScreenState
       body: SafeArea(
         child: ListenableBuilder(
           listenable: controller,
-          builder: (context, child) {
+          builder: (context, _) {
             return Column(
               children: [
-                _buildHeader(),
+                _buildTopBar(),
 
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(
-                      18,
-                      12,
-                      18,
-                      20,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSection(
-                          number: '1',
-                          icon: Icons.info_outline_rounded,
-                          title: 'Basic Information',
-                          subtitle:
-                          'Define the basic details of this charge',
-                          child: _buildBasicInformation(),
-                        ),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                          Expanded(
-                            child: _buildSection(
-                              number: '2',
-                              icon: Icons.payments_outlined,
-                              title: 'Default Value',
-                              subtitle: 'Set the default charge value',
-                              child: _buildDefaultValue(),
-                            ),
-                          ),
-                          SizedBox(width: 12,),
-                          Expanded(child: _buildSection(
-                            number: '3',
-                            icon: Icons.calculate_outlined,
-                            title: 'Charge Calculation',
-                            subtitle:'Charge to be fed as',
-                            child: _buildChargeCalculation(),
-                          )),
-                            SizedBox(width: 12,),
-                          Expanded(child: _buildSection(
-                            number: '6',
-                            icon: Icons.tune_rounded,
-                            title: 'Additional Settings',
-                            subtitle:
-                            'Control invoice behaviour',
-                            child: _buildAdditionalSettings(),
-                          )),
-                          ]
-                        ),
-
-                        _buildSection(
-                          number: '4',
-                          icon: Icons.layers_outlined,
-                          title: 'Applied On',
-                          subtitle:
-                          'Choose where this charge should be applied',
-                          child: _buildAppliedOn(),
-                        ),
-
-
-
-                        // _buildTwoSections(
-                        //   left: _buildSection(
-                        //     number: '5',
-                        //     icon: Icons.receipt_long_outlined,
-                        //     title: 'Tax Treatment',
-                        //     subtitle:
-                        //     'Define the tax treatment for this charge',
-                        //     child: _buildTaxTreatment(),
-                        //   ),
-                        //   right: _buildSection(
-                        //     number: '6',
-                        //     icon: Icons.tune_rounded,
-                        //     title: 'Additional Settings',
-                        //     subtitle:
-                        //     'Control invoice behaviour',
-                        //     child: _buildAdditionalSettings(),
-                        //   ),
-                        // ),
-
-                        const SizedBox(height: 2),
-
-                        _buildBottomBar(),
-                      ],
-                    ),
-                  ),
+                  child: _buildDesktopBody(),
                 ),
+
+                _buildBottomBar(),
               ],
             );
           },
@@ -181,628 +112,802 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// HEADER
-// ===========================================================================
+  // =========================================================================
+  // DESKTOP BODY
+  // =========================================================================
 
-  Widget _buildHeader() {
+  Widget _buildDesktopBody() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            24,
+            20,
+            24,
+            24,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: 1500,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  _buildBasicInformation(),
+
+                  const SizedBox(height: 14),
+
+                  _buildCalculationArea(),
+
+                  const SizedBox(height: 14),
+
+                  _buildAppliedOn(),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // =========================================================================
+  // TOP BAR
+  // =========================================================================
+
+  Widget _buildTopBar() {
+    final bool editMode = widget.chargeData != null;
+
     return Container(
-      height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 62,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: white,
         border: Border(
-          bottom: BorderSide(color: border),
+          bottom: BorderSide(
+            color: borderLight,
+          ),
         ),
       ),
       child: Row(
         children: [
-          InkWell(
-              onTap: (){
-                Navigator.pop(context);
-              },
-              child: Icon(Icons.arrow_back)),
-          SizedBox(width: 12,),
+          const SizedBox(width: 18),
+
+          _topIconButton(
+            icon: Icons.arrow_back_rounded,
+            onTap: () {
+              Navigator.pop(context);
+            },
+          ),
+
+          const SizedBox(width: 14),
+
           Container(
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F5FF),
+              color: primaryLight,
               borderRadius: BorderRadius.circular(7),
             ),
             child: const Icon(
               Icons.receipt_long_outlined,
-              size: 17,
               color: primary,
+              size: 18,
             ),
           ),
 
           const SizedBox(width: 10),
 
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Create Other Charge',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: dark,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                Text(
-                  'Define charge calculation, tax treatment and invoice settings.',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
+          Text(
+            editMode
+                ? 'Edit Other Charge'
+                : 'Create Other Charge',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: dark,
             ),
           ),
 
-          const SizedBox(width: 15),
+          const SizedBox(width: 12),
 
-
-        ],
-      ),
-    );
-  }
-
-  Widget _breadcrumb(String value) {
-    return Text(
-      value,
-      style: const TextStyle(
-        fontSize: 12,
-        color: muted,
-      ),
-    );
-  }
-
-  Widget _breadcrumbArrow() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8),
-      child: Icon(
-        Icons.chevron_right,
-        size: 14,
-        color: Color(0xFF98A2B3),
-      ),
-    );
-  }
-
-// ===========================================================================
-// SECTION
-// ===========================================================================
-
-  Widget _buildSection({
-    required String number,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Widget child,
-  }) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 9),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(
-              12,
-              9,
-              12,
-              8,
+            width: 1,
+            height: 22,
+            color: borderLight,
+          ),
+
+          const SizedBox(width: 12),
+
+          Text(
+            editMode
+                ? 'Modify existing charge configuration'
+                : 'Create and configure a new charge',
+            style: const TextStyle(
+              fontSize: 10.5,
+              color: muted,
             ),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFCFDFE),
-              border: Border(
-                bottom: BorderSide(
-                  color: Color(0xFFF0F2F5),
+          ),
+
+          const Spacer(),
+
+          if (editMode)
+            Container(
+              height: 28,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+              ),
+              decoration: BoxDecoration(
+                color: primaryLight,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: const Color(0xFFD6E5FA),
                 ),
               ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 27,
-                  height: 27,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0F5FF),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 14,
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 12,
                     color: primary,
                   ),
-                ),
-
-                const SizedBox(width: 8),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF2F4F7),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    number,
-                    style: const TextStyle(
-                      fontSize: 11,
+                  SizedBox(width: 5),
+                  Text(
+                    'EDIT MODE',
+                    style: TextStyle(
+                      fontSize: 9,
                       fontWeight: FontWeight.w800,
-                      color: muted,
+                      color: primary,
                     ),
                   ),
-                ),
-
-                const SizedBox(width: 7),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: dark,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 8,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: child,
-          ),
+          const SizedBox(width: 20),
         ],
       ),
     );
   }
 
-// ===========================================================================
-// TWO SECTIONS
-// ===========================================================================
-
-  Widget _buildTwoSections({
-    required Widget left,
-    required Widget right,
+  Widget _topIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bool compact = constraints.maxWidth < 720;
-
-        if (compact) {
-          return Column(
-            children: [
-              left,
-              right,
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: left),
-            const SizedBox(width: 9),
-            Expanded(child: right),
-          ],
-        );
-      },
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: border,
+            ),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            icon,
+            size: 17,
+            color: dark,
+          ),
+        ),
+      ),
     );
   }
 
-// ===========================================================================
-// BASIC INFORMATION
-// ===========================================================================
+
+  // =========================================================================
+  // BASIC INFORMATION
+  // =========================================================================
 
   Widget _buildBasicInformation() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double width = constraints.maxWidth;
+    return _sectionCard(
+      icon: Icons.info_outline_rounded,
+      title: 'Basic Information',
+      subtitle: 'Define the identity and basic behaviour of the charge.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double width = constraints.maxWidth;
 
-// Dynamic minimum width.
-// The fields automatically move to the next line when space is less.
-        const double minFieldWidth = 175;
-        const double spacing = 10;
-
-        final int columns = (width / (minFieldWidth + spacing))
-            .floor()
-            .clamp(1, 5);
-
-        final double fieldWidth = columns == 1
-            ? width
-            : (width - ((columns - 1) * spacing)) / columns;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: 11,
-          children: [
-
-            SizedBox(
-              width: fieldWidth -20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _smallLabel(
-                    'Charge Name',
-                    required: true,
+          if (width >= 1100) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: _buildChargeNameField(),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _buildChargeTypeField(),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _buildChargeNatureField(),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _buildTextField(
+                    label: 'Print Name',
+                    hint: 'Enter print name',
+                    controller:
+                    controller.printNameController,
                   ),
-
-                  const SizedBox(height: 4),
-                  _chargesName(),
-                ],
-              )
-            ),
-            SizedBox(width: 4,),
-
-            SizedBox(
-              width: fieldWidth -50,
-              child:Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-
-                  _smallLabel(
-                    'Charge Type',
-                    required: true,
+                ),
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 210,
+                  child: _buildSettingTile(
+                    title: 'Status',
+                    value: controller.isActive,
+                    onChanged: controller.setStatus,
                   ),
-                  const SizedBox(height: 4),
+                ),
+              ],
+            );
+          }
 
-
-                  SizedBox(
-                      height: 36,
-                      child:   _chargesTypeField()
+          if (width >= 700) {
+            return Wrap(
+              spacing: 14,
+              runSpacing: 16,
+              children: [
+                _desktopField(
+                  width,
+                  _buildChargeNameField(),
+                ),
+                _desktopField(
+                  width,
+                  _buildChargeTypeField(),
+                ),
+                _desktopField(
+                  width,
+                  _buildChargeNatureField(),
+                ),
+                _desktopField(
+                  width,
+                  _buildTextField(
+                    label: 'Print Name',
+                    hint: 'Enter print name',
+                    controller:
+                    controller.printNameController,
                   ),
-                ],
-              )
+                ),
+                _desktopField(
+                  width,
+                  _buildSettingTile(
+                    title: 'Status',
+                    value: controller.isActive,
+                    onChanged: controller.setStatus,
+                  ),
+                ),
+              ],
+            );
+          }
 
-              ,
-              // child: _buildDropdown(
-              //   label: 'Charge Type',
-              //   required: true,
-              //   value: controller.chargeType,
-              //   items: controller.chargeTypes
-              //       .where(
-              //         (e) => e != 'Select Charge Type',
-              //   )
-              //       .toList(),
-              //   hint: 'Select Charge Type',
-              //   onChanged: controller.setChargeType,
-              // ),
-            ),
-
-            SizedBox(width: 6,),
-
-            SizedBox(
-              width: fieldWidth,
-              child: _buildRadioGroup(
-                label: 'Charge Nature',
-                required: true,
-                options: const [
-                  'Additional (+)',
-                  'Deduction (-)',
-                ],
-                selected: controller.chargeNature == 'Additional'
-                    ? 'Additional (+)'
-                    : 'Deduction (-)',
-                onChanged: (value) {
-                  controller.setChargeNature(
-                    value == 'Additional (+)'
-                        ? 'Additional'
-                        : 'Deduction',
-                  );
-                },
+          return Column(
+            children: [
+              _buildChargeNameField(),
+              const SizedBox(height: 14),
+              _buildChargeTypeField(),
+              const SizedBox(height: 14),
+              _buildChargeNatureField(),
+              const SizedBox(height: 14),
+              _buildTextField(
+                label: 'Print Name',
+                hint: 'Enter print name',
+                controller:
+                controller.printNameController,
               ),
-            ),
-
-            SizedBox(
-              width: fieldWidth,
-              child: _buildTextField(
-                label: 'Charge Print Name',
-                hint: 'Enter Print Name',
-                controller: controller.printNameController,
-              ),
-            ),
-            SizedBox(width: 12,),
-            SizedBox(
-              width: fieldWidth,
-              child: _buildSwitchField(
-                label: 'Status',
+              const SizedBox(height: 14),
+              _buildSettingTile(
+                title: 'Status',
                 value: controller.isActive,
                 onChanged: controller.setStatus,
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _chargesTypeField() {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        return SearchableCustomerDropdown<String>(
-          value: controller.chargeType,
-          height: 40,
-          borderColor: Colors.grey.shade300,
-          borderRadius: 4,
-          items: controller.chargeTypes,
-          onSearch: (value) {},
-          displayString: (item) {
-            return item ?? '';
-          },
-          onSelect: (value) {
-            controller.setChargeType(value);
-          },
-        );
-      },
+  Widget _desktopField(
+      double totalWidth,
+      Widget child,
+      ) {
+    final double fieldWidth =
+    totalWidth >= 1000
+        ? (totalWidth - 14) / 2
+        : totalWidth;
+
+    return SizedBox(
+      width: fieldWidth,
+      child: child,
     );
   }
 
+  Widget _buildChargeNameField() {
+    return _fieldWrapper(
+      label: 'Charge Name',
+      required: true,
+      child: _chargesName(),
+    );
+  }
+
+  Widget _buildChargeTypeField() {
+    return _fieldWrapper(
+      label: 'Charge Type',
+      required: true,
+      child: _chargesTypeField(),
+    );
+  }
+
+  Widget _buildChargeNatureField() {
+    return _fieldWrapper(
+      label: 'Charge Nature',
+      required: true,
+      child: _buildSegmentedOptions(
+        options: const [
+          'Additional (+)',
+          'Deduction (-)',
+        ],
+        selected:
+        controller.chargeNature == 'Additional'
+            ? 'Additional (+)'
+            : 'Deduction (-)',
+        onChanged: (value) {
+          controller.setChargeNature(
+            value == 'Additional (+)'
+                ? 'Additional'
+                : 'Deduction',
+          );
+        },
+      ),
+    );
+  }
+
+  // =========================================================================
+  // CHARGE NAME
+  // =========================================================================
 
   Widget _chargesName() {
     return ListenableBuilder(
       listenable: controller.updateCharges,
       builder: (context, _) {
+        return SizedBox(
+          height: 38,
+          child: SearchableCustomerDropdown<
+              OtherChargeModel>(
+            value: controller.selectedCharge,
+            height: 38,
+            borderColor: border,
+            borderRadius: 6,
+            dataFound: controller.chargeNameController.text.length>3? true: false,
+            items: controller.allCharges,
+            onSearch: (value) {
+              controller.chargeNameController.text = value;
+              controller.printNameController.text = value;
 
+              _searchDebounce?.cancel();
 
-        return SearchableCustomerDropdown<OtherChargeModel>(
-          value: controller.selectChargeName,
-          height: 36,
-          borderColor: Colors.grey.shade300,
-          borderRadius: 4,
-          dataFound: true,
-          items: controller.searchCharges,
-          onSearch: (value) {
-            controller.chargeNameController.text = value;
-            controller.printNameController.text = value;
-            _searchDebounce?.cancel();
-            _searchDebounce = Timer(
-              const Duration(milliseconds: 500), () async {
-                await controller.loadOtherCharges(value);
-              },
-            );
-          },
-          displayString: (item) {
-            return item.chargeName ?? '';
-          },
-          onSelect: (OtherChargeModel? value) {
-            controller.setChargeName(value);
-          },
+              _searchDebounce = Timer(
+                const Duration(milliseconds: 500),
+                    () async {
+                  await controller.loadOtherCharges(value);
+                },
+              );
+            },
+            displayString: (item) {
+              return item.chargeName ?? '';
+            },
+            onSelect: (OtherChargeModel? value) {
+              controller.setChargeName(value);
+            },
+          ),
         );
       },
     );
   }
 
+  // =========================================================================
+  // CHARGE TYPE
+  // =========================================================================
 
-// ===========================================================================
-// DEFAULT VALUE
-// ===========================================================================
+  Widget _chargesTypeField() {
+    return SizedBox(
+      height: 38,
+      child: SearchableCustomerDropdown<String>(
+        value: controller.chargeType,
+        height: 38,
+        borderColor: border,
+        borderRadius: 6,
+        items: controller.chargeTypes
+            .where(
+              (e) => e != 'Select Charge Type',
+        )
+            .toList(),
+        onSearch: (_) {},
+        displayString: (item) {
+          return item ?? '';
+        },
+        onSelect: (value) {
+          controller.setChargeType(value);
+        },
+      ),
+    );
+  }
 
-  Widget _buildDefaultValue() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: _buildTextField(
-            label: 'Default Value',
-            hint: '0.00',
-            controller: controller.defaultValueController,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
-          ),
+  // =========================================================================
+  // CALCULATION AREA
+  // =========================================================================
+
+  Widget _buildCalculationArea() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool wide =
+            constraints.maxWidth >= 900;
+
+        if (wide) {
+          return Row(
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildDefaultValueSection(),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _buildCalculationSection(),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            _buildDefaultValueSection(),
+            const SizedBox(height: 14),
+            _buildCalculationSection(),
+          ],
+        );
+      },
+    );
+  }
+
+  // =========================================================================
+  // DEFAULT VALUE
+  // =========================================================================
+
+  Widget _buildDefaultValueSection() {
+    return _sectionCard(
+      icon: Icons.payments_outlined,
+      title: 'Default Value',
+      subtitle: 'Set the initial value used for this charge.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool wide =
+              constraints.maxWidth >= 600;
+
+          if (!wide) {
+            return Column(
+              children: [
+                _buildTextField(
+                  label: 'Default Value',
+                  hint: '0.00',
+                  controller:
+                  controller.defaultValueController,
+                  keyboardType:
+                  const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildSettingTile(
+                  title: 'Manual Change',
+                  value:
+                  controller.allowManualChange,
+                  onChanged:
+                  controller.setAllowManualChange,
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment:
+            CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  label: 'Default Value',
+                  hint: '0.00',
+                  controller:
+                  controller.defaultValueController,
+                  keyboardType:
+                  const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildValueUnit(),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 220,
+                child: _buildSettingTile(
+                  title: 'Manual Change',
+                  value:
+                  controller.allowManualChange,
+                  onChanged:
+                  controller.setAllowManualChange,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildValueUnit() {
+    final bool percentage =
+        controller.calculationType ==
+            'Percentage (%)';
+
+    return Container(
+      height: 38,
+      constraints: const BoxConstraints(
+        minWidth: 44,
+      ),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FA),
+        border: Border.all(
+          color: border,
         ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        percentage ? '%' : '₹',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: muted,
+        ),
+      ),
+    );
+  }
 
-        const SizedBox(width: 8),
+  // =========================================================================
+  // CALCULATION
+  // =========================================================================
 
-        Container(
-          height: 36,
-          constraints: const BoxConstraints(
-            minWidth: 36,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FA),
-            border: Border.all(color: border),
-            borderRadius: BorderRadius.circular(5),
-          ),
-          child: Text(
-            controller.calculationType == 'Percentage (%)'
-                ? '%'
-                : '₹',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: muted,
-            ),
-          ),
+  Widget _buildCalculationSection() {
+    return _sectionCard(
+      icon: Icons.calculate_outlined,
+      title: 'Charge Calculation',
+      subtitle:
+      'Select how the charge amount should be calculated.',
+      child: Column(
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 6),
+
+          _buildCalculationOptions(),
+
+          const SizedBox(height: 12),
+          
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalculationOptions() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _buildOptionChip(
+          title: 'Amount',
+          icon: Icons.currency_rupee,
+          selected:
+          controller.calculationType ==
+              'Amount',
+          onTap: () {
+            controller.setCalculationType(
+              'Amount',
+            );
+          },
+        ),
+        _buildOptionChip(
+          title: 'Per Main Qty',
+          icon: Icons.inventory_2_outlined,
+          selected:
+          controller.calculationType ==
+              'Per Main Qty',
+          onTap: () {
+            controller.setCalculationType(
+              'Per Main Qty',
+            );
+          },
+        ),
+        _buildOptionChip(
+          title: 'Percentage',
+          icon: Icons.percent,
+          selected:
+          controller.calculationType ==
+              'Percentage (%)',
+          onTap: () {
+            controller.setCalculationType(
+              'Percentage (%)',
+            );
+          },
         ),
       ],
     );
   }
 
-// ===========================================================================
-// CHARGE CALCULATION
-// ===========================================================================
-
-  Widget _buildChargeCalculation() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildRadioGroup(
-          label: 'Charge to be fed as',
-          required: true,
-          options: const [
-            'Amount',
-            'Per Main Qty',
-            'Percentage (%)',
-          ],
-          selected: controller.calculationType,
-          onChanged: controller.setCalculationType,
-        ),
-
-        const SizedBox(height: 8),
-
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+  Widget _buildOptionChip({
+    required String title,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(
+            milliseconds: 140,
+          ),
+          height: 38,
           padding: const EdgeInsets.symmetric(
-            horizontal: 9,
-            vertical: 7,
+            horizontal: 11,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7FAFF),
-            borderRadius: BorderRadius.circular(5),
+            color: selected
+                ? primaryLight
+                : white,
+            borderRadius:
+            BorderRadius.circular(6),
             border: Border.all(
-              color: const Color(0xFFDCE8F7),
+              color: selected
+                  ? const Color(0xFF8BB5EE)
+                  : border,
             ),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                size: 13,
-                color: primary,
+              Icon(
+                icon,
+                size: 14,
+                color:
+                selected ? primary : muted,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  _calculationDescription(),
-                  style: const TextStyle(
-                    fontSize: 8.5,
-                    color: Color(0xFF246BCE),
-                    height: 1.35,
-                  ),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: selected
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                  color:
+                  selected ? primary : text,
                 ),
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 
-  String _calculationDescription() {
-    switch (controller.calculationType) {
-      case 'Per Main Qty':
-        return 'Charge will be calculated according to the main item quantity.';
-
-      case 'Percentage (%)':
-        return 'Charge will be calculated as a percentage of the applicable amount.';
-
-      default:
-        return 'A fixed amount will be applied as the charge value.';
-    }
-  }
-
-// ===========================================================================
-// APPLIED ON
-// ===========================================================================
+  // =========================================================================
+  // APPLIED ON
+  // =========================================================================
 
   Widget _buildAppliedOn() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double width = constraints.maxWidth;
+    return _sectionCard(
+      icon: Icons.layers_outlined,
+      title: 'Applied On',
+      subtitle:
+      'Choose where this charge should be applied.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool wide =
+              constraints.maxWidth >= 1050;
 
-        const double minCardWidth = 220;
-        const double spacing = 9;
-
-        final int columns = (width / (minCardWidth + spacing))
-            .floor()
-            .clamp(1, 3);
-
-        final double cardWidth = columns == 1
-            ? width
-            : (width - ((columns - 1) * spacing)) / columns;
-
-        final cards = [
-          _buildAppliedCard(
-            icon: Icons.inventory_2_outlined,
-            title: 'Item Wise',
-            description:
-            'Distribute charge across invoice items.',
-            value: 'Item Wise',
-            child: _buildDistributionMethod(controller.appliedOn == 'Item Wise'),
-          ),
-
-          _buildAppliedCard(
-            icon: Icons.receipt_long_outlined,
-            title: 'Final Bill',
-            description:
-            'Calculate charge on the final bill amount.',
-            value: 'Final Bill',
-            child: _buildInfoMessage(
-              'Calculated on final bill amount after item total and other charges.',
+          final cards = <Widget>[
+            _buildAppliedCard(
+              icon: Icons.inventory_2_outlined,
+              title: 'Item Wise',
+              description:
+              'Distribute the charge across invoice items.',
+              value: 'Item Wise',
+              child: _buildDistributionMethod(controller.appliedOn == 'Item Wise'),
             ),
-          ),
-
-          if(controller.chargeNature!='Deduction')
-          _buildAppliedCard(
-            icon: Icons.add_chart_outlined,
-            title: 'Separate Line',
-            description:
-            'Show the charge as a separate invoice line.',
-            value: 'Separate',
-            child: _buildSeparateFields(),
-          ),
-        ];
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: cards
-              .map(
-                (card) => SizedBox(
-              width: cardWidth,
-              child: card,
+            _buildAppliedCard(
+              icon: Icons.receipt_long_outlined,
+              title: 'Final Bill',
+              description:
+              'Calculate the charge on the final bill.',
+              value: 'Final Bill',
+              child: _buildInfoMessage(
+                icon: Icons.receipt_long_outlined,
+                message:
+                'The charge will be calculated on the final bill amount.',
+              ),
             ),
-          )
-              .toList(),
-        );
-      },
+          ];
+
+          if (controller.chargeNature !=
+              'Deduction') {
+            cards.add(
+              _buildAppliedCard(
+                icon: Icons.add_chart_outlined,
+                title: 'Separate Line',
+                description:
+                'Show the charge as a separate invoice line.',
+                value: 'Separate',
+                child: _buildSeparateFields(),
+              ),
+            );
+          }
+
+          if (wide) {
+            return Row(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                for (int i = 0;
+                i < cards.length;
+                i++) ...[
+                  if (i > 0)
+                    const SizedBox(width: 12),
+                  Expanded(
+                    child: cards[i],
+                  ),
+                ],
+              ],
+            );
+          }
+
+          return Column(
+            children: [
+              for (int i = 0;
+              i < cards.length;
+              i++) ...[
+                if (i > 0)
+                  const SizedBox(height: 12),
+                cards[i],
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 
-// ===========================================================================
-// APPLIED CARD
-// ===========================================================================
+  // =========================================================================
+  // APPLIED CARD
+  // =========================================================================
 
   Widget _buildAppliedCard({
     required IconData icon,
@@ -811,95 +916,104 @@ class _CreateOtherChargeScreenState
     required String value,
     required Widget child,
   }) {
-    final bool selected = controller.appliedOn == value;
+    final bool selected =
+        controller.appliedOn == value;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(
+        milliseconds: 150,
+      ),
       decoration: BoxDecoration(
         color: selected
-            ? const Color(0xFFF7FAFF)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(7),
+            ? const Color(0xFFF8FBFF)
+            : white,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: selected
-              ? const Color(0xFF8FB9EA)
+              ? const Color(0xFF8BB5EE)
               : border,
           width: selected ? 1.2 : 1,
         ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(8),
         onTap: () {
           controller.setAppliedOn(value);
         },
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(13),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   _buildSmallRadio(selected),
 
-                  const SizedBox(width: 7),
+                  const SizedBox(width: 9),
 
                   Container(
-                    width: 27,
-                    height: 27,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: selected
-                          ? const Color(0xFFEAF3FF)
+                          ? primaryLight
                           : const Color(0xFFF5F6F8),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius:
+                      BorderRadius.circular(7),
                     ),
                     child: Icon(
                       icon,
-                      size: 14,
+                      size: 16,
                       color: selected
                           ? primary
                           : muted,
                     ),
                   ),
 
-                  const SizedBox(width: 7),
+                  const SizedBox(width: 9),
 
                   Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: selected ? dark : text,
-                      ),
+                    child: Column(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight:
+                            FontWeight.w700,
+                            color: selected
+                                ? dark
+                                : text,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          description,
+                          maxLines: 1,
+                          overflow:
+                          TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 8.5,
+                            color: muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
                   if (selected)
                     const Icon(
                       Icons.check_circle,
-                      size: 15,
+                      size: 17,
                       color: primary,
                     ),
                 ],
               ),
 
-              const SizedBox(height: 6),
-
-              Padding(
-                padding: const EdgeInsets.only(left: 34),
-                child: Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    height: 1.3,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 9),
+              const SizedBox(height: 12),
 
               child,
             ],
@@ -909,175 +1023,164 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// DISTRIBUTION
-// ===========================================================================
+  // =========================================================================
+  // DISTRIBUTION
+  // =========================================================================
 
-  Widget _buildDistributionMethod(bool isActive) {
+  Widget _buildDistributionMethod(bool selected) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(8),
+      height: 52,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+      ),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F6FF),
-        borderRadius: BorderRadius.circular(5),
+        color: const Color(0xFFF2F7FF),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: const Color(0xFFD9E6F8),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _smallLabel(
-            'Distribution ${controller.distributionMethod}',
-            required: false,
-          ),
-
-          const SizedBox(height: 5),
-
-
-
-          // _buildRadioGroup(
-          //   label: '',
-          //   options: const [
-          //     'By Quantity',
-          //     'By Amount',
-          //   ],
-          //   selected:isActive? controller.distributionMethod:'',
-          //   onChanged: controller.setDistributionMethod,
-          // ),
-
-          const SizedBox(height: 3),
-
-          Text(
-            'Charge is distributed based on the selected method.',
-            style: TextStyle(
-              fontSize: 8.5,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-// ===========================================================================
-// INFO
-// ===========================================================================
-
-  Widget _buildInfoMessage(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 9,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F9FF),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(
-          color: const Color(0xFFDCE8F7),
-        ),
-      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            size: 13,
-            color: primary,
+          Icon(
+            Icons.account_tree_outlined,
+            size: 15,
+            color: selected? primary:Colors.grey,
           ),
 
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
 
           Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 8.5,
-                height: 1.35,
-                color: Color(0xFF246BCE),
-              ),
+            child: Column(
+              mainAxisAlignment:
+              MainAxisAlignment.center,
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Distribution Method',
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w600,
+                    color: muted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  controller.distributionMethod,
+                  style:  TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: selected? primary:Colors.grey,
+                  ),
+                ),
+              ],
             ),
+          ),
+
+          Icon(
+            Icons.check_circle_outline,
+            size: 16,
+            color: selected? primary: Colors.grey,
           ),
         ],
       ),
     );
   }
 
-// ===========================================================================
-// SEPARATE FIELDS
-// ===========================================================================
+  // =========================================================================
+  // SEPARATE LINE
+  // =========================================================================
 
   Widget _buildSeparateFields() {
-    final bool enabled = controller.appliedOn == 'Separate';
+    final bool enabled =
+        controller.appliedOn == 'Separate';
 
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 180),
-      opacity: enabled ? 1 : 0.42,
+      duration: const Duration(
+        milliseconds: 150,
+      ),
+      opacity: enabled ? 1 : .45,
       child: IgnorePointer(
         ignoring: !enabled,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
           children: [
-            _smallLabel(
-              'HSN',
+            _fieldWrapper(
+              label: 'HSN',
               required: true,
+              child: _buildDropdown(
+                label: '',
+                value: controller.hsn,
+                items: controller.hsnList.keys
+                    .where(
+                      (e) => e != 'Select HSN',
+                )
+                    .toList(),
+                hint: 'Select HSN',
+                onChanged: controller.setHSN,
+              ),
             ),
 
-            const SizedBox(height: 5),
+            const SizedBox(height: 10),
 
-            _buildDropdown(
-              label: '',
-              value: controller.hsn,
-              items: controller.hsnList.keys
-                  .where((e) => e != 'Select HSN')
-                  .toList(),
-              hint: 'Select HSN',
-              onChanged: controller.setHSN,
-            ),
-
-            const SizedBox(height: 7),
-
-            _smallLabel('Tax Rate'),
-
-            const SizedBox(height: 5),
-
-            Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F6F8),
-                border: Border.all(color: border),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.auto_awesome_outlined,
-                    size: 12,
-                    color: Color(0xFF98A2B3),
+            _fieldWrapper(
+              label: 'Tax Rate',
+              child: Container(
+                height: 38,
+                padding:
+                const EdgeInsets.symmetric(
+                  horizontal: 10,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                  const Color(0xFFF5F6F8),
+                  border: Border.all(
+                    color: border,
                   ),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Auto from HSN Master',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Color(0xFF98A2B3),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                  borderRadius:
+                  BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome_outlined,
+                      size: 14,
                       color: muted,
                     ),
-                  ),
-                ],
+
+                    const SizedBox(width: 7),
+
+                    Expanded(
+                      child: Text(
+                        controller.hsnTax
+                            ?.trim()
+                            .isNotEmpty ==
+                            true
+                            ? 'GST Rate ${controller.hsnTax}%'
+                            : 'Auto from HSN Master',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight:
+                          FontWeight.w600,
+                          color: muted,
+                        ),
+                      ),
+                    ),
+
+                    const Text(
+                      '%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight:
+                        FontWeight.w800,
+                        color: muted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1086,112 +1189,35 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// TAX TREATMENT
-// ===========================================================================
+  // =========================================================================
+  // SETTING TILE
+  // =========================================================================
 
-  Widget _buildTaxTreatment() {
-    final bool taxable =
-        controller.taxTreatment == 'Taxable';
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bool compact = constraints.maxWidth < 300;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (compact)
-              Column(
-                children: [
-                  _buildChoiceChip(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'Taxable',
-                    selected: taxable,
-                    onTap: () {
-                      controller.setTaxTreatment('Taxable');
-                    },
-                  ),
-                  const SizedBox(height: 7),
-                  _buildChoiceChip(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'Non-Taxable',
-                    selected: !taxable,
-                    onTap: () {
-                      controller.setTaxTreatment('Non-Taxable');
-                    },
-                  ),
-                ],
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildChoiceChip(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'Taxable',
-                      selected: taxable,
-                      onTap: () {
-                        controller.setTaxTreatment('Taxable');
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildChoiceChip(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'Non-Taxable',
-                      selected: !taxable,
-                      onTap: () {
-                        controller.setTaxTreatment('Non-Taxable');
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-            const SizedBox(height: 7),
-
-            Text(
-              taxable
-                  ? 'Tax will be applied according to the selected charge configuration.'
-                  : 'No tax will be applied to this charge.',
-              style: TextStyle(
-                fontSize: 8.5,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-// ===========================================================================
-// ADDITIONAL SETTINGS
-// ===========================================================================
-
-  Widget _buildAdditionalSettings() {
-    final bool enabled = controller.allowManualChange;
-
+  Widget _buildSettingTile({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
     return InkWell(
       borderRadius: BorderRadius.circular(7),
       onTap: () {
-        controller.setAllowManualChange(!enabled);
+        onChanged(!value);
       },
       child: Container(
-        width: double.infinity,
+        constraints: const BoxConstraints(
+          minHeight: 38,
+        ),
         padding: const EdgeInsets.symmetric(
           horizontal: 10,
-          vertical: 8,
+          vertical: 7,
         ),
         decoration: BoxDecoration(
-          color: enabled
-              ? const Color(0xFFF4FBF7)
+          color: value
+              ? const Color(0xFFF3FBF7)
               : const Color(0xFFF8F9FA),
           borderRadius: BorderRadius.circular(7),
           border: Border.all(
-            color: enabled
+            color: value
                 ? const Color(0xFFCDEAD9)
                 : border,
           ),
@@ -1199,48 +1225,40 @@ class _CreateOtherChargeScreenState
         child: Row(
           children: [
             _buildCompactToggle(
-              value: enabled,
-              onChanged: controller.setAllowManualChange,
+              value: value,
+              onChanged: onChanged,
             ),
 
             const SizedBox(width: 8),
 
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment:
+                MainAxisAlignment.center,
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Allow Manual Change',
-                    style: TextStyle(
+                  Text(
+                    title,
+                    style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                       color: text,
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    'User can change the charge value in invoice.',
-                    style: TextStyle(
-                      fontSize: 8.5,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
                 ],
               ),
             ),
 
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
 
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              child: Text(
-                enabled ? 'Enabled' : 'Disabled',
-                key: ValueKey(enabled),
-                style: TextStyle(
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w700,
-                  color: enabled ? green : muted,
-                ),
+            Text(
+              value ? 'ON' : 'OFF',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                color: value ? green : muted,
               ),
             ),
           ],
@@ -1249,323 +1267,264 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// STATUS
-// ===========================================================================
+  // =========================================================================
+  // BOTTOM BAR
+  // =========================================================================
 
-  Widget _buildStatus() {
-    final bool active = controller.isActive;
-
+  Widget _buildBottomBar() {
     return Container(
-      width: double.infinity,
+      height: 62,
       padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 8,
+        horizontal: 24,
       ),
-      decoration: BoxDecoration(
-        color: active
-            ? const Color(0xFFF4FBF7)
-            : const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-          color: active
-              ? const Color(0xFFCDEAD9)
-              : border,
+      decoration: const BoxDecoration(
+        color: white,
+        border: Border(
+          top: BorderSide(
+            color: borderLight,
+          ),
         ),
       ),
       child: Row(
         children: [
-          _buildCompactToggle(
-            value: active,
-            onChanged: controller.setStatus,
-          ),
-
-          const SizedBox(width: 8),
-
-          Text(
-            active ? 'Active' : 'Inactive',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: active ? green : muted,
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F6F8),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.info_outline_rounded,
+              size: 15,
+              color: muted,
             ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(width: 9),
 
-          Container(
-            width: 1,
-            height: 18,
-            color: border,
-          ),
-
-          const SizedBox(width: 12),
-
-          Icon(
-            active
-                ? Icons.check_circle_outline
-                : Icons.info_outline,
-            size: 14,
-            color: active ? green : muted,
-          ),
-
-          const SizedBox(width: 6),
-
-          Expanded(
+          const Expanded(
             child: Text(
-              active
-                  ? 'This charge will be available when creating an invoice.'
-                  : 'Inactive charges will not be available in invoice.',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              'Review the charge configuration before saving.',
               style: TextStyle(
-                fontSize: 8.5,
-                color: Colors.grey.shade600,
+                fontSize: 9.5,
+                color: muted,
               ),
             ),
+          ),
+
+          OutlinedButton(
+            onPressed: controller.isSaving
+                ? null
+                : controller.resetForm,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: text,
+              minimumSize: const Size(90, 36),
+              padding:
+              const EdgeInsets.symmetric(
+                horizontal: 14,
+              ),
+              side: const BorderSide(
+                color: Color(0xFFD0D5DD),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                BorderRadius.circular(6),
+              ),
+            ),
+            child: const Text(
+              'Reset',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 9),
+
+          SizedBox(
+            height: 36,
+            child: ElevatedButton.icon(
+              onPressed: controller.isSaving
+                  ? null
+                  : () {
+                controller.saveCharge(
+                  context,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: dark,
+                foregroundColor: white,
+                disabledBackgroundColor:
+                const Color(0xFF98A2B3),
+                elevation: 0,
+                minimumSize:
+                const Size(140, 36),
+                padding:
+                const EdgeInsets.symmetric(
+                  horizontal: 15,
+                ),
+                shape:
+                RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.circular(6),
+                ),
+              ),
+              icon: controller.isSaving
+                  ? const SizedBox(
+                width: 13,
+                height: 13,
+                child:
+                CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: white,
+                ),
+              )
+                  : const Icon(
+                Icons.save_outlined,
+                size: 14,
+              ),
+              label: Text(
+                controller.isSaving
+                    ? 'Saving...'
+                    : controller.selectedCharge != null
+                    ? 'Update Charge'
+                    : 'Save Charge',
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 2),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // SECTION CARD
+  // =========================================================================
+
+  Widget _sectionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 15,
+            ),
+            decoration:  BoxDecoration(
+              color: Color(0xFFFBFCFE),
+              border: Border(
+                bottom: BorderSide(
+                  color: borderLight,
+                ),
+              ),
+              borderRadius: BorderRadius.circular(12)
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 31,
+                  height: 31,
+                  decoration: BoxDecoration(
+                    color: primaryLight,
+                    borderRadius:
+                    BorderRadius.circular(7),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 15,
+                    color: primary,
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Column(
+                  mainAxisAlignment:
+                  MainAxisAlignment.center,
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight:
+                        FontWeight.w700,
+                        color: dark,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 8.5,
+                        color: muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(15),
+            child: child,
           ),
         ],
       ),
     );
   }
 
-// ===========================================================================
-// BOTTOM ACTION BAR
-// ===========================================================================
+  // =========================================================================
+  // FIELD WRAPPER
+  // =========================================================================
 
-  Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 9,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: border),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool compact = constraints.maxWidth < 520;
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.security_outlined,
-                      size: 14,
-                      color: muted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Review the charge settings before saving.',
-                        style: TextStyle(
-                          fontSize: 8.5,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: _resetButton(),
-                    ),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: _saveButton(),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          }
-
-          return Row(
-            children: [
-              const Icon(
-                Icons.security_outlined,
-                size: 15,
-                color: muted,
-              ),
-
-              const SizedBox(width: 6),
-
-              Expanded(
-                child: Text(
-                  'Review the charge settings before saving.',
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              _resetButton(),
-
-              const SizedBox(width: 7),
-
-              _saveButton(),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _resetButton() {
-    return OutlinedButton.icon(
-      onPressed: controller.isSaving
-          ? null
-          : () {
-        controller.clear();
-      },
-      style: OutlinedButton.styleFrom(
-        foregroundColor: text,
-        minimumSize: const Size(88, 34),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-        ),
-        side: const BorderSide(
-          color: Color(0xFFD0D5DD),
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5),
-        ),
-      ),
-      icon: const Icon(
-        Icons.refresh_rounded,
-        size: 14,
-      ),
-      label: const Text(
-        'Reset',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _saveButton() {
-    return ElevatedButton.icon(
-      onPressed: controller.isSaving ? null : (){
-        controller.saveCharge(context);
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: dark,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        minimumSize: const Size(118, 34),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5),
-        ),
-      ),
-      icon: controller.isSaving
-          ? const SizedBox(
-        width: 13,
-        height: 13,
-        child: CircularProgressIndicator(
-          strokeWidth: 1.5,
-          color: Colors.white,
-        ),
-      )
-          : const Icon(
-        Icons.save_outlined,
-        size: 14,
-      ),
-      label: Text(
-        controller.isSaving ? 'Saving...' : 'Save Charge',
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
-// ===========================================================================
-// CHOICE CHIP
-// ===========================================================================
-
-  Widget _buildChoiceChip({
-    required IconData icon,
-    required String title,
-    required bool selected,
-    required VoidCallback onTap,
+  Widget _fieldWrapper({
+    required String label,
+    required Widget child,
+    bool required = false,
   }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: Container(
-          height: 38,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-          ),
-          decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xFFF2F7FF)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: selected
-                  ? const Color(0xFF8FB9EA)
-                  : border,
-            ),
-          ),
-          child: Row(
-            children: [
-              _buildSmallRadio(selected),
-
-              const SizedBox(width: 6),
-
-              Icon(
-                icon,
-                size: 13,
-                color: selected ? primary : muted,
-              ),
-
-              const SizedBox(width: 5),
-
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: selected
-                        ? FontWeight.w700
-                        : FontWeight.w500,
-                    color: text,
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return Column(
+      crossAxisAlignment:
+      CrossAxisAlignment.start,
+      children: [
+        _smallLabel(
+          label,
+          required: required,
         ),
-      ),
+        const SizedBox(height: 6),
+        child,
+      ],
     );
   }
 
-// ===========================================================================
-// TEXT FIELD
-// ===========================================================================
+  // =========================================================================
+  // TEXT FIELD
+  // =========================================================================
 
   Widget _buildTextField({
     required String label,
@@ -1573,54 +1532,45 @@ class _CreateOtherChargeScreenState
     required TextEditingController controller,
     bool required = false,
     TextInputType? keyboardType,
-    Function? onChange,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _smallLabel(
-          label,
-          required: required,
-        ),
-
-        const SizedBox(height: 4),
-
-        SizedBox(
-          height: 36,
-          child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            style: const TextStyle(
-              fontSize: 12,
-              color: text,
+    return _fieldWrapper(
+      label: label,
+      required: required,
+      child: SizedBox(
+        height: 38,
+        child: TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          style: const TextStyle(
+            fontSize: 11.5,
+            color: text,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              fontSize: 10.5,
+              color: Color(0xFF98A2B3),
             ),
-            onChanged: (value){
-              onChange?.call(value);
-            },
-            decoration: InputDecoration(
-              hintText: hint,
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 7,
-              ),
-              border: _inputBorder(),
-              enabledBorder: _inputBorder(),
-              focusedBorder: _inputBorder(
-                color: primary,
-              ),
-
+            filled: true,
+            fillColor: white,
+            contentPadding:
+            const EdgeInsets.symmetric(
+              horizontal: 11,
+            ),
+            border: _inputBorder(),
+            enabledBorder: _inputBorder(),
+            focusedBorder: _inputBorder(
+              color: primary,
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
-// ===========================================================================
-// DROPDOWN
-// ===========================================================================
+  // =========================================================================
+  // DROPDOWN
+  // =========================================================================
 
   Widget _buildDropdown({
     required String label,
@@ -1631,20 +1581,23 @@ class _CreateOtherChargeScreenState
     bool required = false,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+      CrossAxisAlignment.start,
       children: [
         if (label.isNotEmpty) ...[
           _smallLabel(
             label,
             required: required,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
         ],
-
         SizedBox(
-          height: 36,
+          height: 38,
           child: DropdownButtonFormField<String>(
-            initialValue: items.contains(value) ? value : null,
+            initialValue:
+            items.contains(value)
+                ? value
+                : null,
             isExpanded: true,
             icon: const Icon(
               Icons.keyboard_arrow_down_rounded,
@@ -1652,19 +1605,26 @@ class _CreateOtherChargeScreenState
               color: muted,
             ),
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: text,
             ),
-            hint: Text(hint),
+            hint: Text(
+              hint,
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: Color(0xFF98A2B3),
+              ),
+            ),
             items: items.map(
                   (item) {
                 return DropdownMenuItem<String>(
                   value: item,
                   child: Text(
                     item,
-                    overflow: TextOverflow.ellipsis,
+                    overflow:
+                    TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 );
@@ -1672,8 +1632,9 @@ class _CreateOtherChargeScreenState
             ).toList(),
             onChanged: onChanged,
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
+              contentPadding:
+              const EdgeInsets.symmetric(
+                horizontal: 11,
               ),
               border: _inputBorder(),
               enabledBorder: _inputBorder(),
@@ -1687,79 +1648,132 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// RADIO GROUP
-// ===========================================================================
+  // =========================================================================
+  // INFO MESSAGE
+  // =========================================================================
 
-  Widget _buildRadioGroup({
-    required String label,
-    required List<String> options,
-    required String selected,
-    required ValueChanged<String> onChanged,
-    bool required = false,
+  Widget _buildInfoMessage({
+    required IconData icon,
+    required String message,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // if (label.isNotEmpty) ...[
-        //   _smallLabel(
-        //     label,
-        //     required: required,
-        //   ),
-        //   const SizedBox(height: 10),
-        // ],
-
-        Wrap(
-          spacing: 10,
-          runSpacing: 6,
-          children: options.map(
-                (option) {
-              final bool isSelected = selected == option;
-
-              return InkWell(
-                borderRadius: BorderRadius.circular(4),
-                onTap: () {
-                  onChanged(option);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 2,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildSmallRadio(isSelected),
-
-                      const SizedBox(width: 5),
-
-                      Text(
-                        option,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: text,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ).toList(),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 9,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F9FF),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: const Color(0xFFDCE8F7),
         ),
-      ],
+      ),
+      child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: primary,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 8.5,
+                height: 1.4,
+                color: primary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-// ===========================================================================
-// RADIO
-// ===========================================================================
+  // =========================================================================
+  // SEGMENTED OPTIONS
+  // =========================================================================
+
+  Widget _buildSegmentedOptions({
+    required List<String> options,
+    required String selected,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Wrap(
+      spacing: 7,
+      runSpacing: 7,
+      children: options.map(
+            (option) {
+          final bool active =
+              option == selected;
+
+          return InkWell(
+            borderRadius:
+            BorderRadius.circular(6),
+            onTap: () {
+              onChanged(option);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(
+                milliseconds: 130,
+              ),
+              height: 34,
+              padding:
+              const EdgeInsets.symmetric(
+                horizontal: 10,
+              ),
+              decoration: BoxDecoration(
+                color: active
+                    ? primaryLight
+                    : white,
+                borderRadius:
+                BorderRadius.circular(6),
+                border: Border.all(
+                  color: active
+                      ? const Color(0xFF8BB5EE)
+                      : border,
+                ),
+              ),
+              child: Row(
+                mainAxisSize:
+                MainAxisSize.min,
+                children: [
+                  _buildSmallRadio(active),
+                  const SizedBox(width: 6),
+                  Text(
+                    option,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: active
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: active
+                          ? primary
+                          : text,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ).toList(),
+    );
+  }
+
+  // =========================================================================
+  // RADIO
+  // =========================================================================
 
   Widget _buildSmallRadio(bool selected) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: const Duration(
+        milliseconds: 120,
+      ),
       width: 14,
       height: 14,
       decoration: BoxDecoration(
@@ -1776,7 +1790,8 @@ class _CreateOtherChargeScreenState
         child: Container(
           width: 6,
           height: 6,
-          decoration: const BoxDecoration(
+          decoration:
+          const BoxDecoration(
             color: primary,
             shape: BoxShape.circle,
           ),
@@ -1786,27 +1801,26 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// COMPACT SWITCH
-// ===========================================================================
+  // =========================================================================
+  // SWITCH
+  // =========================================================================
 
   Widget _buildCompactToggle({
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
     return SizedBox(
-      width: 30,
-      height: 18,
+      width: 32,
+      height: 20,
       child: Transform.scale(
-        scale: 0.72,
+        scale: .72,
         child: Switch(
           value: value,
           onChanged: onChanged,
           materialTapTargetSize:
           MaterialTapTargetSize.shrinkWrap,
-          thumbColor: WidgetStateProperty.all(
-            Colors.white,
-          ),
+          thumbColor:
+          WidgetStateProperty.all(white),
           trackColor:
           WidgetStateProperty.resolveWith(
                 (states) {
@@ -1828,65 +1842,9 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// SWITCH FIELD
-// ===========================================================================
-
-  Widget _buildSwitchField({
-    required String label,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _smallLabel(label),
-
-        const SizedBox(height: 4),
-
-        Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-          ),
-          // decoration: BoxDecoration(
-          //   color: value
-          //       ? const Color(0xFFF4FBF7)
-          //       : const Color(0xFFF8F9FA),
-          //   borderRadius: BorderRadius.circular(5),
-          //   border: Border.all(
-          //     color: value
-          //         ? const Color(0xFFCDEAD9)
-          //         : border,
-          //   ),
-          // ),
-          child: Row(
-            children: [
-              _buildCompactToggle(
-                value: value,
-                onChanged: onChanged,
-              ),
-
-              const SizedBox(width: 12),
-
-              Text(
-                value ? 'Active' : 'Inactive',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: value ? green : muted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-// ===========================================================================
-// LABEL
-// ===========================================================================
+  // =========================================================================
+  // LABEL
+  // =========================================================================
 
   Widget _smallLabel(
       String label, {
@@ -1896,7 +1854,7 @@ class _CreateOtherChargeScreenState
       text: TextSpan(
         text: label,
         style: const TextStyle(
-          fontSize: 9,
+          fontSize: 9.5,
           fontWeight: FontWeight.w700,
           color: text,
         ),
@@ -1913,15 +1871,15 @@ class _CreateOtherChargeScreenState
     );
   }
 
-// ===========================================================================
-// INPUT BORDER
-// ===========================================================================
+  // =========================================================================
+  // INPUT BORDER
+  // =========================================================================
 
   OutlineInputBorder _inputBorder({
     Color color = border,
   }) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(5),
+      borderRadius: BorderRadius.circular(6),
       borderSide: BorderSide(
         color: color,
       ),

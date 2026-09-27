@@ -1,7 +1,7 @@
 import 'package:calculation_panel/core/theme/colors.dart';
 import 'package:flutter/material.dart';
+
 import '../../../core/vars/global_vars.dart';
-import '../../dashboard/presentaion/erp_top_header.dart';
 import '../data/model/other_charge_model.dart';
 import '../data/other_chagres_controller.dart';
 import 'other_chagres_screen.dart';
@@ -10,53 +10,72 @@ class OtherChargeListScreen extends StatefulWidget {
   const OtherChargeListScreen({super.key});
 
   @override
-  State<OtherChargeListScreen> createState() => _OtherChargeListScreenState();
+  State<OtherChargeListScreen> createState() =>
+      _OtherChargeListScreenState();
 }
 
 class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
-  // ===========================================================================
-  // COLORS
-  // ===========================================================================
+// ===========================================================================
+// COLORS
+// ===========================================================================
 
-  static const Color backgroundColor = Color(0xFFF5F7FA);
+  static const Color backgroundColor = Color(0xFFF6F8FB);
+  static const Color cardColor = Colors.white;
+
   static const Color textColor = Color(0xFF101828);
   static const Color secondaryText = Color(0xFF667085);
-  // static const Color borderColor = Color(0xFFE4E7EC);
+  static const Color mutedText = Color(0xFF98A2B3);
+
   static const Color headerColor = Color(0xFFF8FAFC);
+  static const Color border = Color(0xFFE4E7EC);
+  static const Color divider = Color(0xFFEAECF0);
+
   static const Color green = Color(0xFF12B76A);
+  static const Color greenDark = Color(0xFF027A48);
   static const Color greenBg = Color(0xFFECFDF3);
+
   static const Color red = Color(0xFFF04438);
+  static const Color redDark = Color(0xFFB42318);
   static const Color redBg = Color(0xFFFEF3F2);
+
   static const Color blue = Color(0xFF2E6FDE);
+  static const Color blueDark = Color(0xFF175CD3);
   static const Color blueBg = Color(0xFFEFF8FF);
 
-  // ===========================================================================
-  // CONTROLLER
-  // ===========================================================================
+  static const Color purple = Color(0xFF7F56D9);
+  static const Color purpleBg = Color(0xFFF4F3FF);
+
+// ===========================================================================
+// CONTROLLER
+// ===========================================================================
 
   late OtherChargeController controller;
 
   bool isLoading = false;
 
-  final TextEditingController searchController = TextEditingController();
+  final TextEditingController searchController =
+  TextEditingController();
 
   String selectedFilter = 'All';
 
-  // ===========================================================================
-  // INIT
-  // ===========================================================================
+// ===========================================================================
+// INIT
+// ===========================================================================
 
   @override
   void initState() {
     super.initState();
+
     GlobalVars.globalRoutes = "/otherChargeScreen";
+
     controller = OtherChargeController();
+
     _loadData();
   }
 
-  // ===========================================================================
-  // LOAD
-  // ===========================================================================
+// ===========================================================================
+// LOAD DATA
+// ===========================================================================
 
   Future<void> _loadData() async {
     if (mounted) {
@@ -76,7 +95,10 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to load charges: $e'),
+          content: Text(
+            'Failed to load charges: $e',
+            style: const TextStyle(fontSize: 12),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -89,6 +111,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     }
   }
 
+// ===========================================================================
+// ADD
+// ===========================================================================
 
   Future<void> _addNewCharge() async {
     final result = await showDialog<bool>(
@@ -99,7 +124,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
         return Dialog(
           insetPadding: const EdgeInsets.fromLTRB(
             16,
-            50, // 👈 top padding
+            45,
             16,
             20,
           ),
@@ -109,7 +134,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           clipBehavior: Clip.antiAlias,
           child: SizedBox(
             width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.88,
+            height: MediaQuery.of(context).size.height * .88,
             child: const CreateOtherChargeScreen(),
           ),
         );
@@ -121,9 +146,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     }
   }
 
-  // ===========================================================================
-  // EDIT
-  // ===========================================================================
+// ===========================================================================
+// EDIT
+// ===========================================================================
 
   Future<void> _editCharge(OtherChargeModel charge) async {
     final result = await showDialog<bool>(
@@ -134,7 +159,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
         return Dialog(
           insetPadding: const EdgeInsets.fromLTRB(
             16,
-            50, // 👈 top padding
+            45,
             16,
             20,
           ),
@@ -144,8 +169,10 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           clipBehavior: Clip.antiAlias,
           child: SizedBox(
             width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.88,
-            child:  CreateOtherChargeScreen(chargeData: charge,),
+            height: MediaQuery.of(context).size.height * .88,
+            child: CreateOtherChargeScreen(
+              chargeData: charge,
+            ),
           ),
         );
       },
@@ -156,32 +183,125 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     }
   }
 
-  // ===========================================================================
-  // DELETE
-  // ===========================================================================
+// ===========================================================================
+// DELETE
+// ===========================================================================
 
   Future<void> _deleteCharge(OtherChargeModel charge) async {
+    final confirmed = await _showDeleteConfirmation(charge);
 
-    final result = await controller.deleteOtherCharge(
-       id: charge.id.toString(),
-    );
+    if (!confirmed) return;
 
-    if (result == true) {
-      await _loadData();
+    try {
+      final result = await controller.deleteOtherCharge(
+        id: charge.id.toString(),
+      );
+
+      if (!mounted) return;
+
+      if (result == true) {
+        await _loadData();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Charge deleted successfully',
+              style: TextStyle(fontSize: 12),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to delete charge: $e',
+            style: const TextStyle(fontSize: 12),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
-
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Delete API is not connected yet.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
-  // ===========================================================================
-  // DISPOSE
-  // ===========================================================================
+// ===========================================================================
+// DELETE CONFIRMATION
+// ===========================================================================
+
+  Future<bool> _showDeleteConfirmation(
+      OtherChargeModel charge,
+      ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          title: const Text(
+            'Delete Charge?',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to delete "${_displayValue(charge.chargeName)}"?',
+            style: const TextStyle(
+              fontSize: 12,
+              color: secondaryText,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: secondaryText,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: red,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(7),
+                ),
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+// ===========================================================================
+// DISPOSE
+// ===========================================================================
 
   @override
   void dispose() {
@@ -191,9 +311,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     super.dispose();
   }
 
-  // ===========================================================================
-  // FILTER DATA
-  // ===========================================================================
+// ===========================================================================
+// FILTERED DATA
+// ===========================================================================
 
   List<OtherChargeModel> get filteredCharges {
     final query = searchController.text.trim().toLowerCase();
@@ -224,7 +344,6 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
         charge.calculationType,
         charge.appliedOn,
         charge.distributionMethod,
-        charge.taxTreatment,
         charge.hsn,
       ].join(' ').toLowerCase();
 
@@ -232,45 +351,34 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     }).toList();
   }
 
-  // ===========================================================================
-  // BUILD
-  // ===========================================================================
+// ===========================================================================
+// BUILD
+// ===========================================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-
-      // ========================================================================
-      // APP BAR
-      // ========================================================================
-
-
-      // ========================================================================
-      // BODY
-      // ========================================================================
-
       body: RefreshIndicator(
+        color: themeColor,
         onRefresh: _loadData,
-        color: Colors.black,
         child: _buildBody(),
       ),
     );
   }
 
-  // ===========================================================================
-  // BODY
-  // ===========================================================================
+// ===========================================================================
+// BODY
+// ===========================================================================
 
   Widget _buildBody() {
     if (isLoading && controller.allCharges.isEmpty) {
       return const Center(
         child: SizedBox(
-          width: 26,
-          height: 26,
+          width: 28,
+          height: 28,
           child: CircularProgressIndicator(
             strokeWidth: 2.5,
-            color: Colors.black,
           ),
         ),
       );
@@ -283,116 +391,138 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     return Column(
       children: [
         _buildTopHeader(),
-        _buildTopControls(),
-        const SizedBox(height: 12),
-
-        _buildSummary(),
-
-        const SizedBox(height: 12),
 
         Expanded(
-          child: _buildTable(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              18,
+              16,
+              18,
+              16,
+            ),
+            child: Column(
+              children: [
+                _buildTopControls(),
+
+                const SizedBox(height: 14),
+
+                _buildSummary(),
+
+                const SizedBox(height: 14),
+
+                Expanded(
+                  child: _buildTable(),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
+// ===========================================================================
+// TOP HEADER
+// ===========================================================================
+
   Widget _buildTopHeader() {
     return Container(
-      height: 56,
+      height: 64,
       width: double.infinity,
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFE5E7EB),
-            width: 1,
+            color: border,
           ),
         ),
       ),
-      padding: const EdgeInsets.only(
-        left: 18,
-        right: 16,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
       ),
       child: Row(
         children: [
-          // ============================================================
-          // ICON
-          // ============================================================
+// ICON
           Container(
-            width: 34,
-            height: 34,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: themeColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(
               Icons.receipt_long_rounded,
-              size: 18,
+              size: 20,
               color: Colors.white,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+// TITLE
+          const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Other Charges',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Manage charges & calculations',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: secondaryText,
+                ),
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+// REFRESH
+          Tooltip(
+            message: 'Refresh',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isLoading ? null : _loadData,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: border,
+                    ),
+                  ),
+                  child: AnimatedRotation(
+                    turns: isLoading ? 1 : 0,
+                    duration: const Duration(
+                      milliseconds: 500,
+                    ),
+                    child: const Icon(
+                      Icons.refresh_rounded,
+                      size: 19,
+                      color: secondaryText,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
 
           const SizedBox(width: 10),
 
-          // ============================================================
-          // TITLE
-          // ============================================================
-          const Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Other Charges',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                    height: 1.1,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Manage charges & calculations',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w400,
-                    color: secondaryText,
-                    height: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ============================================================
-          // REFRESH
-          // ============================================================
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: isLoading ? null : _loadData,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
-            ),
-            icon: AnimatedRotation(
-              turns: isLoading ? 1 : 0,
-              duration: const Duration(milliseconds: 500),
-              child: const Icon(
-                Icons.refresh_rounded,
-                size: 21,
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 4),
-
-          // ============================================================
-          // ADD NEW BUTTON
-          // ============================================================
+// ADD BUTTON
           SizedBox(
             height: 38,
             child: ElevatedButton.icon(
@@ -402,14 +532,14 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                 size: 17,
               ),
               label: const Text(
-                'Add New',
+                'Add New Charge',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: themeColor ,
+                backgroundColor: themeColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
@@ -425,13 +555,15 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       ),
     );
   }
-  // ===========================================================================
-  // TOP CONTROLS
-  // ===========================================================================
+
+// ===========================================================================
+// TOP CONTROLS
+// ===========================================================================
 
   Widget _buildTopControls() {
     return Row(
       children: [
+// SEARCH
         Expanded(
           child: Container(
             height: 42,
@@ -439,7 +571,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: borderColor,
+                color: border,
               ),
             ),
             child: TextField(
@@ -448,7 +580,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                 setState(() {});
               },
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11.5,
                 color: textColor,
               ),
               decoration: InputDecoration(
@@ -456,7 +588,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   size: 19,
-                  color: Color(0xFF98A2B3),
+                  color: mutedText,
                 ),
                 suffixIcon: searchController.text.isNotEmpty
                     ? IconButton(
@@ -467,37 +599,51 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                   icon: const Icon(
                     Icons.close_rounded,
                     size: 17,
-                    color: Color(0xFF98A2B3),
+                    color: mutedText,
                   ),
                 )
                     : null,
-                hintText: 'Search charge, print name, HSN...',
+                hintText:
+                'Search charge, print name, HSN, type...',
                 hintStyle: const TextStyle(
                   fontSize: 11,
-                  color: Color(0xFF98A2B3),
+                  color: mutedText,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 12,
+                contentPadding:
+                const EdgeInsets.symmetric(
+                  vertical: 11,
                 ),
               ),
             ),
           ),
         ),
 
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
+
+// FILTER LABEL
+        const Text(
+          'Status:',
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: secondaryText,
+          ),
+        ),
+
+        const SizedBox(width: 7),
 
         _buildFilterButton('All'),
-        const SizedBox(width: 6),
+        const SizedBox(width: 5),
         _buildFilterButton('Active'),
-        const SizedBox(width: 6),
+        const SizedBox(width: 5),
         _buildFilterButton('Inactive'),
       ],
     );
   }
 
-  // ===========================================================================
-  // FILTER BUTTON
-  // ===========================================================================
+// ===========================================================================
+// FILTER BUTTON
+// ===========================================================================
 
   Widget _buildFilterButton(String value) {
     final bool selected = selectedFilter == value;
@@ -510,125 +656,135 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       },
       borderRadius: BorderRadius.circular(7),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 38,
+        duration: const Duration(milliseconds: 160),
+        height: 36,
         padding: const EdgeInsets.symmetric(
           horizontal: 12,
         ),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? themeColor : Colors.white,
+          color: selected
+              ? themeColor
+              : Colors.white,
           borderRadius: BorderRadius.circular(7),
           border: Border.all(
-            color: selected ? themeColor : borderColor,
+            color: selected
+                ? themeColor
+                : border,
           ),
         ),
         child: Text(
           value,
           style: TextStyle(
-            fontSize: 10.5,
+            fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : secondaryText,
+            color: selected
+                ? Colors.white
+                : secondaryText,
           ),
         ),
       ),
     );
   }
 
-  // ===========================================================================
-  // SUMMARY
-  // ===========================================================================
+// ===========================================================================
+// SUMMARY
+// ===========================================================================
 
   Widget _buildSummary() {
     final total = controller.allCharges.length;
 
     final active = controller.allCharges
-        .where((element) => element.isActive == '1')
+        .where(
+          (element) => element.isActive == '1',
+    )
         .length;
 
     final inactive = total - active;
 
-    return Container(
-      height: 66,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: borderColor,
+    return Row(
+      children: [
+        Expanded(
+          child: _buildSummaryCard(
+            icon: Icons.receipt_long_outlined,
+            title: 'Total Charges',
+            value: total.toString(),
+            iconBackground:
+            const Color(0xFFF2F4F7),
+            iconColor:
+            const Color(0xFF475467),
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildSummaryItem(
-              icon: Icons.receipt_long_outlined,
-              title: 'Total Charges',
-              value: total.toString(),
-              iconBackground: const Color(0xFFF2F4F7),
-              iconColor: const Color(0xFF475467),
-            ),
+
+        const SizedBox(width: 10),
+
+        Expanded(
+          child: _buildSummaryCard(
+            icon:
+            Icons.check_circle_outline_rounded,
+            title: 'Active',
+            value: active.toString(),
+            iconBackground: greenBg,
+            iconColor: green,
           ),
+        ),
 
-          _summaryDivider(),
+        const SizedBox(width: 10),
 
-          Expanded(
-            child: _buildSummaryItem(
-              icon: Icons.check_circle_outline_rounded,
-              title: 'Active',
-              value: active.toString(),
-              iconBackground: greenBg,
-              iconColor: green,
-            ),
+        Expanded(
+          child: _buildSummaryCard(
+            icon: Icons.cancel_outlined,
+            title: 'Inactive',
+            value: inactive.toString(),
+            iconBackground: redBg,
+            iconColor: red,
           ),
+        ),
 
-          _summaryDivider(),
+        const SizedBox(width: 10),
 
-          Expanded(
-            child: _buildSummaryItem(
-              icon: Icons.cancel_outlined,
-              title: 'Inactive',
-              value: inactive.toString(),
-              iconBackground: redBg,
-              iconColor: red,
-            ),
+        Expanded(
+          child: _buildSummaryCard(
+            icon: Icons.filter_list_rounded,
+            title: 'Showing',
+            value: filteredCharges.length
+                .toString(),
+            iconBackground: blueBg,
+            iconColor: blue,
           ),
-
-          _summaryDivider(),
-
-          Expanded(
-            child: _buildSummaryItem(
-              icon: Icons.filter_list_rounded,
-              title: 'Showing',
-              value: filteredCharges.length.toString(),
-              iconBackground: blueBg,
-              iconColor: blue,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  // ===========================================================================
-  // SUMMARY ITEM
-  // ===========================================================================
+// ===========================================================================
+// SUMMARY CARD
+// ===========================================================================
 
-  Widget _buildSummaryItem({
+  Widget _buildSummaryCard({
     required IconData icon,
     required String title,
     required String value,
     required Color iconBackground,
     required Color iconColor,
   }) {
-    return Padding(
+    return Container(
+      height: 50,
       padding: const EdgeInsets.symmetric(
-        horizontal: 16,
+        horizontal: 14,
+      ),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: border,
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: iconBackground,
               borderRadius: BorderRadius.circular(8),
@@ -643,22 +799,26 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           const SizedBox(width: 10),
 
           Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
             children: [
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9.5,
                   color: secondaryText,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 2),
+
+              const SizedBox(height: 3),
+
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: textColor,
                 ),
@@ -670,35 +830,22 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // DIVIDER
-  // ===========================================================================
-
-  Widget _summaryDivider() {
-    return Container(
-      width: 1,
-      height: 34,
-      color: borderColor,
-    );
-  }
-
-  // ===========================================================================
-  // TABLE
-  // ===========================================================================
+// ===========================================================================
+// TABLE
+// ===========================================================================
 
   Widget _buildTable() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: const Color(0xFFD0D5DD),
+          color: border,
         ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Scrollbar(
         thumbVisibility: true,
-        notificationPredicate: (_) => true,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
@@ -710,17 +857,24 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                 Expanded(
                   child: filteredCharges.isEmpty
                       ? _buildNoSearchResult()
-                      : ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: filteredCharges.length,
-                    itemBuilder: (context, index) {
-                      final charge = filteredCharges[index];
+                      : Scrollbar(
+                    thumbVisibility: true,
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount:
+                      filteredCharges.length,
+                      itemBuilder:
+                          (context, index) {
+                        final charge =
+                        filteredCharges[
+                        index];
 
-                      return _buildTableRow(
-                        charge,
-                        index,
-                      );
-                    },
+                        return _buildTableRow(
+                          charge,
+                          index,
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -731,24 +885,28 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // TABLE HEADER
-  // ===========================================================================
+// ===========================================================================
+// TABLE HEADER
+// ===========================================================================
 
   Widget _buildTableHeader() {
     return Container(
-      height: 44,
+      height: 42,
       decoration: const BoxDecoration(
         color: headerColor,
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFD0D5DD),
+            color: border,
           ),
         ),
       ),
       child: Row(
         children: [
-          _headerCell('#', 50, center: true),
+          _headerCell(
+            '#',
+            50,
+            center: true,
+          ),
 
           _headerCell(
             'Charge Name',
@@ -790,10 +948,6 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
             135,
           ),
 
-          _headerCell(
-            'Tax Treatment',
-            120,
-          ),
 
           _headerCell(
             'HSN',
@@ -817,9 +971,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // HEADER CELL
-  // ===========================================================================
+// ===========================================================================
+// HEADER CELL
+// ===========================================================================
 
   Widget _headerCell(
       String title,
@@ -841,44 +995,46 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           : const BoxDecoration(
         border: Border(
           right: BorderSide(
-            color: Color(0xFFEAECF0),
+            color: divider,
           ),
         ),
       ),
       child: Text(
-        title,
+        title.toUpperCase(),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF475467),
+          letterSpacing: .2,
+          color: secondaryText,
         ),
       ),
     );
   }
 
-  // ===========================================================================
-  // TABLE ROW
-  // ===========================================================================
+// ===========================================================================
+// TABLE ROW
+// ===========================================================================
 
   Widget _buildTableRow(
       OtherChargeModel charge,
       int index,
       ) {
-    final bool isActive = charge.isActive == '1';
+    final bool isActive =
+        charge.isActive == '1';
 
     return Material(
       color: Colors.white,
       child: InkWell(
         onTap: () => _editCharge(charge),
-        hoverColor: const Color(0xFFF8FAFC),
+        hoverColor: const Color(0xFFF9FAFB),
         child: Container(
-          height: 46,
-          decoration:  BoxDecoration(
+          height: 48,
+          decoration: const BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: Color(0xFFEAECF0),
+                color: divider,
               ),
             ),
           ),
@@ -888,7 +1044,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                 (index + 1).toString(),
                 50,
                 center: true,
-                color: const Color(0xFF98A2B3),
+                color: mutedText,
                 bold: true,
               ),
 
@@ -908,10 +1064,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                 110,
               ),
 
-              _dataCellNature(
+              _natureCell(
                 charge.chargeNature,
                 115,
-                color: Colors.white
               ),
 
               _valueCell(
@@ -935,12 +1090,6 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
               ),
 
               _dataCell(
-                charge.taxTreatment,
-                120,
-                muted: true,
-              ),
-
-              _dataCell(
                 charge.hsn,
                 90,
               ),
@@ -961,16 +1110,14 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // CHARGE NAME
-  // ===========================================================================
+// ===========================================================================
+// CHARGE NAME
+// ===========================================================================
 
   Widget _chargeNameCell(
       String? value,
       double width,
       ) {
-    final displayValue = _displayValue(value);
-
     return Container(
       width: width,
       height: double.infinity,
@@ -981,7 +1128,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       decoration: const BoxDecoration(
         border: Border(
           right: BorderSide(
-            color: Color(0xFFEAECF0),
+            color: divider,
           ),
         ),
       ),
@@ -991,13 +1138,14 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F4F7),
-              borderRadius: BorderRadius.circular(6),
+              color: purpleBg,
+              borderRadius:
+              BorderRadius.circular(7),
             ),
             child: const Icon(
               Icons.receipt_outlined,
               size: 15,
-              color: Color(0xFF667085),
+              color: purple,
             ),
           ),
 
@@ -1005,9 +1153,10 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
 
           Expanded(
             child: Text(
-              displayValue,
+              _displayValue(value),
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              overflow:
+              TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
@@ -1020,9 +1169,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // TYPE
-  // ===========================================================================
+// ===========================================================================
+// TYPE CELL
+// ===========================================================================
 
   Widget _typeCell(
       String? value,
@@ -1031,7 +1180,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     final text = _displayValue(value);
 
     final bool isPercentage =
-    text.toLowerCase().contains('percentage');
+    text.toLowerCase().contains(
+      'percentage',
+    );
 
     return Container(
       width: width,
@@ -1043,7 +1194,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       decoration: const BoxDecoration(
         border: Border(
           right: BorderSide(
-            color: Color(0xFFEAECF0),
+            color: divider,
           ),
         ),
       ),
@@ -1056,22 +1207,24 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           color: isPercentage
               ? blueBg
               : const Color(0xFFF2F4F7),
-          borderRadius: BorderRadius.circular(5),
+          borderRadius:
+          BorderRadius.circular(5),
           border: Border.all(
             color: isPercentage
                 ? const Color(0xFFB2DDFF)
-                : borderColor,
+                : border,
           ),
         ),
         child: Text(
           text,
           maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          overflow:
+          TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 8.5,
             fontWeight: FontWeight.w700,
             color: isPercentage
-                ? const Color(0xFF175CD3)
+                ? blueDark
                 : const Color(0xFF475467),
           ),
         ),
@@ -1079,9 +1232,87 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // VALUE
-  // ===========================================================================
+// ===========================================================================
+// NATURE CELL
+// ===========================================================================
+
+  Widget _natureCell(
+      String? value,
+      double width,
+      ) {
+    final text = _displayValue(value);
+
+    final bool isDeduction =
+        text.toLowerCase() == 'deduction';
+
+    return Container(
+      width: width,
+      height: double.infinity,
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 11,
+      ),
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: divider,
+          ),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 5,
+        ),
+        decoration: BoxDecoration(
+          color: isDeduction
+              ? greenBg
+              : redBg,
+          borderRadius:
+          BorderRadius.circular(5),
+          border: Border.all(
+            color: isDeduction
+                ? const Color(0xFFA6F4C5)
+                : const Color(0xFFFECDCA),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isDeduction
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+              size: 11,
+              color: isDeduction
+                  ? greenDark
+                  : redDark,
+            ),
+
+            const SizedBox(width: 4),
+
+            Text(
+              text,
+              maxLines: 1,
+              overflow:
+              TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 8.5,
+                fontWeight: FontWeight.w700,
+                color: isDeduction
+                    ? greenDark
+                    : redDark,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+// ===========================================================================
+// VALUE CELL
+// ===========================================================================
 
   Widget _valueCell(
       String? value,
@@ -1099,14 +1330,17 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       decoration: const BoxDecoration(
         border: Border(
           right: BorderSide(
-            color: Color(0xFFEAECF0),
+            color: divider,
           ),
         ),
       ),
       child: Text(
         text,
+        maxLines: 1,
+        overflow:
+        TextOverflow.ellipsis,
         style: const TextStyle(
-          fontSize: 10.5,
+          fontSize: 10,
           fontWeight: FontWeight.w600,
           color: textColor,
         ),
@@ -1114,9 +1348,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // DATA CELL
-  // ===========================================================================
+// ===========================================================================
+// DATA CELL
+// ===========================================================================
 
   Widget _dataCell(
       String? value,
@@ -1126,8 +1360,6 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
         bool muted = false,
         Color? color,
       }) {
-    final displayValue = _displayValue(value);
-
     return Container(
       width: width,
       height: double.infinity,
@@ -1137,20 +1369,20 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       padding: const EdgeInsets.symmetric(
         horizontal: 11,
       ),
-      decoration: BoxDecoration(
-
-        border: const Border(
+      decoration: const BoxDecoration(
+        border: Border(
           right: BorderSide(
-            color: Color(0xFFEAECF0),
+            color: divider,
           ),
         ),
       ),
       child: Text(
-        displayValue,
+        _displayValue(value),
         maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        overflow:
+        TextOverflow.ellipsis,
         style: TextStyle(
-          fontSize: 10,
+          fontSize: 9.5,
           fontWeight: bold
               ? FontWeight.w600
               : FontWeight.w400,
@@ -1163,61 +1395,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  Widget _dataCellNature(
-      String? value,
-      double width, {
-        bool center = false,
-        bool bold = true,
-        bool muted = false,
-        Color? color,
-      }) {
-    final displayValue = _displayValue(value);
-
-    return Container(
-      width: width,
-      height: double.infinity,
-      alignment: center
-          ? Alignment.center
-          : Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-      ),
-      decoration: BoxDecoration(
-        border: const Border(
-          right: BorderSide(
-            color: Color(0xFFEAECF0),
-          ),
-        ),
-      ),
-      child: Container(
-       decoration: BoxDecoration(
-         borderRadius: BorderRadius.circular(8),
-         color: value=="Deduction"? Colors.green: Colors.redAccent,
-       ),
-
-        padding: const EdgeInsets.all(6.0),
-        child: Text(
-          displayValue,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: bold
-                ? FontWeight.w600
-                : FontWeight.w400,
-            color: color ??
-                (muted
-                    ? secondaryText
-                    : const Color(0xFF475467)),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // STATUS
-  // ===========================================================================
+// ===========================================================================
+// STATUS
+// ===========================================================================
 
   Widget _statusCell(
       bool isActive,
@@ -1233,7 +1413,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       decoration: const BoxDecoration(
         border: Border(
           right: BorderSide(
-            color: Color(0xFFEAECF0),
+            color: divider,
           ),
         ),
       ),
@@ -1243,8 +1423,10 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           vertical: 5,
         ),
         decoration: BoxDecoration(
-          color: isActive ? greenBg : redBg,
-          borderRadius: BorderRadius.circular(5),
+          color:
+          isActive ? greenBg : redBg,
+          borderRadius:
+          BorderRadius.circular(5),
           border: Border.all(
             color: isActive
                 ? const Color(0xFFA6F4C5)
@@ -1252,27 +1434,35 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize:
+          MainAxisSize.min,
           children: [
             Container(
               width: 5,
               height: 5,
-              decoration: BoxDecoration(
-                color: isActive ? green : red,
-                shape: BoxShape.circle,
+              decoration:
+              BoxDecoration(
+                color: isActive
+                    ? green
+                    : red,
+                shape:
+                BoxShape.circle,
               ),
             ),
 
             const SizedBox(width: 5),
 
             Text(
-              isActive ? 'Active' : 'Inactive',
+              isActive
+                  ? 'Active'
+                  : 'Inactive',
               style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
+                fontSize: 8.5,
+                fontWeight:
+                FontWeight.w700,
                 color: isActive
-                    ? const Color(0xFF027A48)
-                    : const Color(0xFFB42318),
+                    ? greenDark
+                    : redDark,
               ),
             ),
           ],
@@ -1281,9 +1471,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // ACTION
-  // ===========================================================================
+// ===========================================================================
+// ACTION CELL
+// ===========================================================================
 
   Widget _actionCell(
       OtherChargeModel charge,
@@ -1294,12 +1484,14 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       height: double.infinity,
       alignment: Alignment.center,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment:
+        MainAxisAlignment.center,
         children: [
           _actionButton(
             icon: Icons.edit_outlined,
             tooltip: 'Edit',
-            onTap: () => _editCharge(charge),
+            onTap: () =>
+                _editCharge(charge),
           ),
 
           const SizedBox(width: 5),
@@ -1307,17 +1499,16 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           PopupMenuButton<String>(
             padding: EdgeInsets.zero,
             tooltip: 'More actions',
-
             icon: const Icon(
               Icons.more_horiz_rounded,
               size: 19,
-              color: Color(0xFF667085),
+              color: secondaryText,
             ),
-
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+            shape:
+            RoundedRectangleBorder(
+              borderRadius:
+              BorderRadius.circular(8),
             ),
-
             onSelected: (value) {
               switch (value) {
                 case 'edit':
@@ -1329,7 +1520,6 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                   break;
               }
             },
-
             itemBuilder: (context) {
               return const [
                 PopupMenuItem<String>(
@@ -1351,6 +1541,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                     ],
                   ),
                 ),
+
                 PopupMenuItem<String>(
                   value: 'delete',
                   height: 40,
@@ -1380,9 +1571,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // ACTION BUTTON
-  // ===========================================================================
+// ===========================================================================
+// ACTION BUTTON
+// ===========================================================================
 
   Widget _actionButton({
     required IconData icon,
@@ -1393,24 +1584,28 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
       message: tooltip,
       child: Material(
         color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius:
+        BorderRadius.circular(6),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius:
+          BorderRadius.circular(6),
           child: Container(
-            width: 31,
-            height: 31,
+            width: 30,
+            height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius:
+              BorderRadius.circular(6),
               border: Border.all(
-                color: borderColor,
+                color: border,
               ),
             ),
             child: Icon(
               icon,
-              size: 16,
-              color: const Color(0xFF475467),
+              size: 15,
+              color:
+              const Color(0xFF475467),
             ),
           ),
         ),
@@ -1418,9 +1613,9 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // EMPTY SEARCH
-  // ===========================================================================
+// ===========================================================================
+// NO SEARCH RESULT
+// ===========================================================================
 
   Widget _buildNoSearchResult() {
     return Center(
@@ -1428,16 +1623,18 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F4F7),
-              borderRadius: BorderRadius.circular(12),
+              color:
+              const Color(0xFFF2F4F7),
+              borderRadius:
+              BorderRadius.circular(12),
             ),
             child: const Icon(
               Icons.search_off_rounded,
-              color: Color(0xFF667085),
-              size: 23,
+              color: secondaryText,
+              size: 24,
             ),
           ),
 
@@ -1457,7 +1654,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
           const Text(
             'Try another search or filter.',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 10.5,
               color: secondaryText,
             ),
           ),
@@ -1466,41 +1663,55 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // EMPTY
-  // ===========================================================================
+// ===========================================================================
+// EMPTY STATE
+// ===========================================================================
 
   Widget _buildEmptyState() {
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics:
+      const AlwaysScrollableScrollPhysics(),
       children: [
         SizedBox(
-          height: MediaQuery.sizeOf(context).height * .55,
+          height:
+          MediaQuery.sizeOf(context)
+              .height *
+              .65,
           child: Center(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize:
+              MainAxisSize.min,
               children: [
                 Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF2F4F7),
-                    borderRadius: BorderRadius.circular(16),
+                  width: 70,
+                  height: 70,
+                  decoration:
+                  BoxDecoration(
+                    color:
+                    const Color(
+                      0xFFF2F4F7,
+                    ),
+                    borderRadius:
+                    BorderRadius.circular(
+                      17,
+                    ),
                   ),
                   child: const Icon(
-                    Icons.receipt_long_outlined,
-                    size: 30,
-                    color: Color(0xFF98A2B3),
+                    Icons
+                        .receipt_long_outlined,
+                    size: 32,
+                    color: mutedText,
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 15),
 
                 const Text(
                   'No other charges found',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight:
+                    FontWeight.w600,
                     color: textColor,
                   ),
                 ),
@@ -1515,10 +1726,11 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 17),
 
                 ElevatedButton.icon(
-                  onPressed: _addNewCharge,
+                  onPressed:
+                  _addNewCharge,
                   icon: const Icon(
                     Icons.add_rounded,
                     size: 17,
@@ -1527,19 +1739,29 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
                     'Add New Charge',
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                      FontWeight.w600,
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
+                  style:
+                  ElevatedButton.styleFrom(
+                    backgroundColor:
+                    themeColor,
+                    foregroundColor:
+                    Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
+                    padding:
+                    const EdgeInsets
+                        .symmetric(
+                      horizontal: 15,
                       vertical: 11,
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(7),
+                    shape:
+                    RoundedRectangleBorder(
+                      borderRadius:
+                      BorderRadius.circular(
+                        7,
+                      ),
                     ),
                   ),
                 ),
@@ -1551,15 +1773,17 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
     );
   }
 
-  // ===========================================================================
-  // VALUE HELPER
-  // ===========================================================================
+// ===========================================================================
+// DISPLAY VALUE
+// ===========================================================================
 
   String _displayValue(String? value) {
-    if (value == null || value.trim().isEmpty) {
+    if (value == null ||
+        value.trim().isEmpty) {
       return '-';
     }
 
     return value.trim();
   }
 }
+

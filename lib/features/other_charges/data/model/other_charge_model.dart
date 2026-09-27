@@ -8,7 +8,6 @@ class OtherChargeModel {
   final String calculationType;
   final String appliedOn;
   final String distributionMethod;
-  final String taxTreatment;
   final String hsn;
   final String hsnTax;
   final String allowManualChange;
@@ -26,7 +25,6 @@ class OtherChargeModel {
     required this.calculationType,
     required this.appliedOn,
     required this.distributionMethod,
-    required this.taxTreatment,
     required this.hsn,
     required this.hsnTax,
     required this.allowManualChange,
@@ -65,9 +63,6 @@ class OtherChargeModel {
       distributionMethod:
       json['distribution_method']?.toString() ?? '',
 
-      taxTreatment:
-      json['tax_treatment']?.toString() ?? '',
-
       hsn:
       json['hsn']?.toString() ?? '',
       hsnTax:
@@ -98,7 +93,6 @@ class OtherChargeModel {
       'calculation_type': calculationType,
       'applied_on': appliedOn,
       'distribution_method': distributionMethod,
-      'tax_treatment': taxTreatment,
       'hsn': hsn,
       'allow_manual_change': allowManualChange,
       'is_active': isActive,

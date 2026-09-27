@@ -9,6 +9,7 @@ import 'package:calculation_panel/features/purchase_challan/representaion/pdf_ge
 import 'package:calculation_panel/features/purchase_challan/representaion/supplier_header/model/supplier_model.dart';
 import 'package:flutter/material.dart';
 import '../../../core/database/local_store_manager.dart';
+import '../../../core/database/sql_databaes/purchase_challan_database.dart';
 import '../../../core/network/api_path.dart';
 import '../../../core/network/api_repository.dart';
 import '../../../core/ulitls/calculation.dart';
@@ -91,6 +92,8 @@ class PurchaseController extends ChangeNotifier {
   List<OtherChargeModel> chargeData = [];
 
   void setDraftData(Map<String, dynamic> map) {
+
+
     extraChargeController.delItem();
     if (map['extraCharge'] != null) {
       if (map['extraCharge'] is List && map['extraCharge'].isNotEmpty) {
@@ -119,14 +122,13 @@ class PurchaseController extends ChangeNotifier {
     lrNoController.text = map['lrNo']?.toString() ?? '';
     lrDateController.text = map['lrDate']?.toString() ?? '';
     remarkController.text = map['remark']?.toString() ?? '';
-
     selectedTransport = map['selectedTransport'] != null
         ? TransportModel.fromJson(
             Map<String, dynamic>.from(map['selectedTransport']),
           )
         : null;
 
-    selectedAgent = map['selectedAgent'] != null
+    selectedAgent = map['selectedAgent']!= null
         ? Agency.fromJson(Map<String, dynamic>.from(map['selectedAgent']))
         : null;
 
@@ -152,6 +154,7 @@ class PurchaseController extends ChangeNotifier {
     additionalChargeValue = double.tryParse(map['additionalChargeValue']?.toString() ?? '') ?? 0.0;
 
     finalDiscount = double.tryParse(map['finalDiscount']?.toString() ?? '')?? 0;
+
   }
   void setFinalDiscount(String value){
     finalDiscount = double.tryParse(value)?? 0;
@@ -203,20 +206,54 @@ class PurchaseController extends ChangeNotifier {
     updateSummery.update();
     await Future.delayed(Duration(milliseconds: 500));
 
-    var response = await ApiProvider.createServerRequest(
-        apiUrl: ApiPath.submitChallanApi,
-        requestBody: data,
-        isFormData: true
-    );
+    try {
+      if (GlobalVars.isOffline) {
+        // TODO: convert your `data` into the format
+        // required by saveCompletePurchase()
 
-    if(response['status']!=null && response['status'] == true)
-      {
-        print(response['message']);
-        clearAll();
+        final purchaseId =
+        await PurchaseDatabase.instance.saveCompletePurchase(data);
+
+        print('Offline purchase saved: $purchaseId');
+
+        showMessage(
+          purchaseId==0? 'Challan already exists': 'Challan saved offline',
+          ToastType.info,
+        );
+
+        if(purchaseId!=0) {
+          clearAll();
+        }
+      } else {
+        final response = await ApiProvider.createServerRequest(
+          apiUrl: ApiPath.submitChallanApi,
+          requestBody: data,
+          isFormData: true,
+        );
+
+        if (response['status'] != null &&
+            response['status'] == true) {
+          print(response['message']);
+
+          clearAll();
+        }
+
+        showMessage(
+          response['message'],
+          ToastType.info,
+        );
       }
-    showMessage(response['message'], ToastType.info);
-    isSubmitting = false;
-    updateSummery.update();
+    } catch (e) {
+      print('Submit challan error: $e');
+
+      showMessage(
+        'Something went wrong: $e',
+        ToastType.info,
+      );
+    } finally {
+      isSubmitting = false;
+      updateSummery.update();
+    }
 
   }
 
@@ -333,7 +370,6 @@ class PurchaseController extends ChangeNotifier {
         location: '',
         address: '',
       );
-      selectedAgent = value.agency;
     }
 
     if (items.isEmpty) {

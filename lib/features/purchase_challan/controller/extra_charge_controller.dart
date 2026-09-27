@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/database/sql_database_manager.dart';
+import '../../../core/database/sql_databaes/extra_charge_database.dart';
 import '../../../core/network/api_path.dart';
 import '../../../core/network/api_repository.dart';
 import '../../../core/vars/global_vars.dart';
@@ -42,7 +42,7 @@ class ExtraChargeController extends ChangeNotifier {
       if(GlobalVars.isOffline)
       {
         final List<Map<String, dynamic>> charges =
-        await DatabaseHelper.instance.getExtraCharges(query);
+        await ExtraChargeDatabase.instance.search(query);
         responseData = {
           'status': true,
           'data':charges
@@ -118,7 +118,7 @@ class ExtraChargeController extends ChangeNotifier {
       }
 
     item.itemValue.itemWiseDistribution = value.calculationType;
-
+    item.id = value.id;
     item.itemValue.id = value.id;
     item.itemValue.name = value.chargeName;
     item.itemValue.amount = double.tryParse(value.defaultValue)?? 0;
@@ -135,10 +135,9 @@ class ExtraChargeController extends ChangeNotifier {
 
 
   void addItem() {
-    var itemId = DateTime.now().microsecondsSinceEpoch.toString();
 
     final item = ExtraChargeModel(
-      id: itemId,
+      id: '',
       itemValue: ExtraChargeItemValue(id: ''),
     );
     _items.add(item);
@@ -148,8 +147,6 @@ class ExtraChargeController extends ChangeNotifier {
  void setItem(ExtraChargeItemValue value, {required List<OtherChargeModel> data}) {
 
     bool isSet = false;
-    print("this is good78540");
-    print(data);
     if(value.id.isNotEmpty){
       for(var x in data)
         {
@@ -163,7 +160,7 @@ class ExtraChargeController extends ChangeNotifier {
         }
     }
     if(!isSet) {
-      _items.add(ExtraChargeModel(id:value.id, selectChargeName: OtherChargeModel(chargeName: value.name, id: '', chargeType: '', chargeNature: '', printName: '', defaultValue: '', calculationType: value.itemWiseDistribution, appliedOn: '', distributionMethod: '', taxTreatment: '', hsn: '', hsnTax: '', allowManualChange: '', isActive: '', createdAt: '', updatedAt: ''), itemValue: value));
+      _items.add(ExtraChargeModel(id:value.id, selectChargeName: OtherChargeModel(chargeName: value.name, id: '', chargeType: '', chargeNature: '', printName: '', defaultValue: '', calculationType: value.itemWiseDistribution, appliedOn: '', distributionMethod: '', hsn: '', hsnTax: '', allowManualChange: '', isActive: '', createdAt: '', updatedAt: ''), itemValue: value));
     }
  }
 

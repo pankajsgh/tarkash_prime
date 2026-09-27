@@ -14,7 +14,6 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final controller = AuthController();
-  final ScrollController _scrollController = ScrollController();
 
 
   @override
@@ -28,20 +27,19 @@ class _LoginPageState extends State<LoginPage> {
     controller.dispose();
     super.dispose();
   }
-
-  void _scrollToField(double height) {
-    Future.delayed(Duration(milliseconds: 300), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
+  //
+  // void _scrollToField(double height) {
+  //   Future.delayed(Duration(milliseconds: 300), () {
+  //     _scrollController.animateTo(
+  //       _scrollController.position.maxScrollExtent,
+  //       duration: Duration(milliseconds: 300),
+  //       curve: Curves.easeInOut,
+  //     );
+  //   });
+  // }
 
 
   void getFinalOtp(String otp){
-    print(otp);
     controller.setOtp(otp);
   }
 
@@ -51,10 +49,6 @@ class _LoginPageState extends State<LoginPage> {
     final isDesktop = size.width >= 700;
 
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
-    if (keyboardHeight > 10) {
-      _scrollToField(keyboardHeight);
-    }
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -76,7 +70,6 @@ class _LoginPageState extends State<LoginPage> {
 
               SafeArea(
                 child: SingleChildScrollView(
-                  controller: _scrollController,
                   padding: EdgeInsets.symmetric(
                     horizontal: isDesktop ? 30 : 20,
                     vertical: isDesktop ? 35 : 24,

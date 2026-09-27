@@ -869,6 +869,7 @@ class _PurchasePageState extends State<PurchasePage>
   // ============================================================
 
   Widget _buildAgentDropdown() {
+
     return SearchableCustomerDropdown<Agency>(
       value: purchaseController.selectedAgent,
       height: 36,

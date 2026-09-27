@@ -5,7 +5,7 @@ import '../../other_charges/data/model/other_charge_model.dart';
 import 'purchase_model.dart';
 
 class ExtraChargeModel {
-  final String id;
+  String id;
   ExtraChargeItemValue itemValue;
   OtherChargeModel? selectChargeName;
   double itemMultiplier =1;
@@ -62,13 +62,9 @@ class ExtraChargeModel {
       taxAmount = totalValue * itemValue.taxPercent / 100;
       return taxAmount;
     } else {
-      print("this is good8899");
-      print(selectChargeName?.calculationType.trim());
       if(selectChargeName?.calculationType.trim()=='Per Main Qty')
         {
           chargeList = distributeItemProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.quantity).toList());
-          print("this is good 2233");
-          print(chargeList);
         } else {
           chargeList = distributePriceProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.getFinalPriceAfterDiscount).toList());
       }

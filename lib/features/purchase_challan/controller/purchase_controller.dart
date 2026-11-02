@@ -1,30 +1,41 @@
 import 'dart:convert';
 import 'dart:math' as math;
-
-import 'package:calculation_panel/core/database/local_data/agent_json.dart';
 import 'package:calculation_panel/core/ulitls/utility.dart';
 import 'package:calculation_panel/core/vars/global_vars.dart';
 import 'package:calculation_panel/core/widget/widget_updater.dart';
-import 'package:calculation_panel/features/purchase_challan/representaion/pdf_genrate/challan_view.dart';
-import 'package:calculation_panel/features/purchase_challan/representaion/supplier_header/model/supplier_model.dart';
 import 'package:flutter/material.dart';
+import '../../../core/compair.dart';
+import '../../../core/database/local_data/product_json.dart';
 import '../../../core/database/local_store_manager.dart';
-import '../../../core/database/sql_databaes/purchase_challan_database.dart';
 import '../../../core/network/api_path.dart';
 import '../../../core/network/api_repository.dart';
-import '../../../core/ulitls/calculation.dart';
+import '../../../core/widget/series_field.dart';
 import '../../../core/widget/toast.dart';
+import '../../dashboard/model/store_model.dart';
 import '../../other_charges/data/model/other_charge_model.dart';
+import '../model/hsn_model.dart';
+import '../model/party_model.dart';
 import '../model/product_model.dart';
-import '../model/store_model.dart';
+import '../model/purchase_challan_detail_model.dart';
 import '../model/transport_model.dart';
-import '../representaion/supplier_header/model/agent_model.dart';
+import '../model/agent_model.dart';
 import 'extra_charge_controller.dart';
 import '../model/extra_charge_model.dart';
 import '../model/purchase_model.dart';
 
+
+
+
 class PurchaseController extends ChangeNotifier {
-  PurchaseController();
+  PurchaseController({
+    required this.submitChallanApi,
+    required this.updateChallanApi,
+    required this.draftType,
+ });
+
+  String submitChallanApi ='';
+  String updateChallanApi ='';
+  String draftType = '';
 
   ExtraChargeController extraChargeController = ExtraChargeController();
   final TextEditingController lrNoController = TextEditingController();
@@ -34,17 +45,16 @@ class PurchaseController extends ChangeNotifier {
   WidgetUpdater updateSummery = WidgetUpdater();
   double additionalChargeValue = 0.0;
   Party? selectSupplier;
+  TransportModel? selectedTransport;
+  Agency? selectedAgent;
   String gstNo = '';
   StoreModel? selectedStore;
   String challanNo = '';
   String selectedData = '';
-  TransportModel? selectedTransport;
-  Agency? selectedAgent;
   double finalDiscount = 0;
   bool isSubmitting = false;
-
+  String updateId = '';
   List<Agency> agents = [];
-
   double additionalDiscountTotal = 0.0;
   List<double> additionalDiscountList = [];
   List<double> additionalChargeList = [];
@@ -52,7 +62,146 @@ class PurchaseController extends ChangeNotifier {
   int get totalItems => items.length;
   List<ProductModel> products = [];
   String selectedDraft = '';
+  Series? selectedSeries;
+  String? referenceNo;
+  PurchaseChallanDetails? purchaseChallanDetails;
+  Map<String, dynamic> previousAPIData = {};
 
+  void setSeries(Series? value){
+    selectedSeries = value;
+  }
+
+  String draftListKey(String supplierId) {
+    return '${draftType}_draft_$supplierId';
+  }
+
+  String draftDataKey(String supplierId, String draftName) {
+    return '${draftType}_${supplierId}_${draftName.trim()}';
+  }
+
+ Future<void> getPreviousData(String id)async {
+   updateId = id;
+   Map<String, dynamic> requestBody = {};
+   requestBody['id'] = updateId;
+
+   var detailApi = draftType=="purchase_challan" ? ApiPath.purchaseChallansDetailApi: ApiPath.supplierVoucherDetailApi;
+
+   print(detailApi);
+
+   var response = await ApiProvider.createServerRequest(
+     apiUrl: detailApi,
+     requestBody: requestBody,
+     isFormData: true,
+   );
+
+   if (response['status'] != null && response['status']) {
+     try {
+
+       purchaseChallanDetails = PurchaseChallanDetails.fromJson(response['data']);
+
+       if(purchaseChallanDetails!=null) {
+         previousAPIData = response['data'];
+         selectSupplier = Party(id: purchaseChallanDetails!.supplierId, customerCode: '', userType: '', company: purchaseChallanDetails!.company, printName: '', name: '', mobile: '', gstNo: gstNo, status: '', address: '', pincode: '', discount: '', partyType: '');
+       }
+
+
+       if(purchaseChallanDetails!=null) {
+
+         referenceNo = purchaseChallanDetails!.rereferenceNo;
+
+         for(var x in  purchaseChallanDetails!.items)
+           {
+             List<HsnTaxSlab> hsnTaxSlab =  await getHsnTaxSlab(x.productId);
+
+             x.hsnTaxSlabs = hsnTaxSlab;
+           }
+
+
+
+         setDraftData(purchaseChallanDetails!.toDataMap());
+       }
+     } catch (e) {
+       print(e);
+     }
+   }
+   notifyListeners();
+ }
+
+  Future<void> updateProducts() async {
+    try {
+      for (final product in productJson['ProductList'] as List<dynamic>) {
+
+        final Map<String, dynamic> requestBody = {
+          'id': product['id']?.toString() ?? '',
+          'product': product['product']?.toString() ?? '',
+          'supl_name': product['supl_name']?.toString() ?? '',
+          'category': product['category']?.toString() ?? '',
+          'hsncode': jsonEncode(product['hsncode'] ?? {}),
+          'brand': jsonEncode(product['brand'] ?? {}),
+          'HSNTaxSlab': jsonEncode(product['HSNTaxSlab'] ?? []),
+        };
+        final response = await ApiProvider.createServerRequest(
+          apiUrl: ApiPath.addProduct,
+          requestBody: requestBody,
+          isFormData: true,
+        );
+
+        await Future.delayed(Duration(milliseconds: 200));
+
+        print('Response: $response');
+      }
+    } catch (e) {
+      print('Product update error: $e');
+    }
+  }
+
+
+  Future<List<HsnTaxSlab>> getHsnTaxSlab(
+      String productId,
+      ) async {
+    try {
+      final Map<String, String> requestData = {
+        'product_id': productId,
+      };
+
+      final response = await ApiProvider.createServerRequest(
+        apiUrl: ApiPath.productTaxSlabs,
+        requestBody: requestData,
+        isFormData: true,
+      );
+
+      debugPrint('HSN Tax Slab Response: $response');
+
+      final Map<String, dynamic> responseData =
+      Map<String, dynamic>.from(response);
+
+      // Your API:
+      // error = true  -> SUCCESS
+      // error = false -> ERROR
+
+      if (responseData['error'] != true) {
+        debugPrint(
+          'HSN Tax Slab Error: '
+              '${responseData['message']?.toString() ?? 'Unknown error'}',
+        );
+        return [];
+      }
+
+      final List<dynamic> slabData =
+          responseData['HSNTaxSlab'] as List<dynamic>? ?? [];
+
+      return slabData
+          .map(
+            (item) => HsnTaxSlab.fromJson(
+          Map<String, dynamic>.from(item),
+        ),
+      )
+          .toList();
+    } catch (e) {
+      debugPrint('getHsnTaxSlab Error: $e');
+      return [];
+    }
+  }
 
 
   Future<void> getAgentList(String search) async {
@@ -66,12 +215,6 @@ class PurchaseController extends ChangeNotifier {
       requestBody: requestBody,
       isFormData: true,
     );
-
-
-    if(GlobalVars.isOffline)
-    {
-      response = agentJson;
-    }
 
     if (response['error'] != null && response['error']) {
       try {
@@ -93,12 +236,10 @@ class PurchaseController extends ChangeNotifier {
 
   void setDraftData(Map<String, dynamic> map) {
 
-
     extraChargeController.delItem();
     if (map['extraCharge'] != null) {
       if (map['extraCharge'] is List && map['extraCharge'].isNotEmpty) {
         for (var x in map['extraCharge']) {
-
           var extraCharges = ExtraChargeItemValue.fromJson(
             Map<String, dynamic>.from(x),
           );
@@ -107,8 +248,30 @@ class PurchaseController extends ChangeNotifier {
       }
       notifyListeners();
     }
-    selectSupplier = map['selectSupplier'] != null
+
+
+    var supplierData = map['selectSupplier'] != null
         ? Party.fromJson(Map<String, dynamic>.from(map['selectSupplier']))
+        : null;
+
+
+    if(supplierData!=null)
+    {
+      if(selectSupplier!=null)
+      {
+        selectSupplier!.agency = supplierData.agency;
+        selectSupplier!.transport = supplierData.transport;
+      } else {
+        selectSupplier = supplierData;
+      }
+    }
+
+    if(map['selectedTransport']!=null) {
+      selectSupplier!.transport = Transport(id: map['selectedTransport']['id']?? '', name: map['selectedTransport']['transport']?? '');
+    }
+
+    selectedSeries = map['selectedSeries'] != null
+        ? Series.fromJson(Map<String, dynamic>.from(map['selectedSeries']))
         : null;
 
     gstNo = map['gstNo']?.toString() ?? '';
@@ -144,25 +307,33 @@ class PurchaseController extends ChangeNotifier {
 
     items.clear();
 
-    items.addAll(
-      (map['items'] as List?)
-              ?.map((e) => PurchaseItem.fromJson(Map<String, dynamic>.from(e)))
-              .toList() ??
-          [],
-    );
+
+   items.addAll(
+     (map['items'] as List?)
+         ?.map(
+           (e) => PurchaseItem.fromJson(
+         Map<String, dynamic>.from(e as Map),
+       ),
+     )
+         .toList() ??
+         [],
+   );
 
     additionalChargeValue = double.tryParse(map['additionalChargeValue']?.toString() ?? '') ?? 0.0;
-
     finalDiscount = double.tryParse(map['finalDiscount']?.toString() ?? '')?? 0;
 
+
   }
+
   void setFinalDiscount(String value){
     finalDiscount = double.tryParse(value)?? 0;
   }
 
   Map<String, dynamic> toDataMap() {
+
     return {
       'selectSupplier': selectSupplier?.toJson(),
+      'selectedSeries': selectedSeries?.toJson(),
       'gstNo': gstNo,
       'selectedStore': selectedStore?.toJson(),
       'challanNo': challanNo,
@@ -195,10 +366,10 @@ class PurchaseController extends ChangeNotifier {
     };
   }
   
-  Future<void> submitChallan()async{
+  Future<bool?> submitChallan(bool isEdit)async{
 
     if (selectSupplier == null) {
-      return;
+      return null;
     }
 
     var data =  toJsonMap();
@@ -206,43 +377,67 @@ class PurchaseController extends ChangeNotifier {
     updateSummery.update();
     await Future.delayed(Duration(milliseconds: 500));
 
-    try {
-      if (GlobalVars.isOffline) {
-        // TODO: convert your `data` into the format
-        // required by saveCompletePurchase()
+    try
+    {
+        Map<String, dynamic> response = {};
+        if(isEdit)
+          {
 
-        final purchaseId =
-        await PurchaseDatabase.instance.saveCompletePurchase(data);
 
-        print('Offline purchase saved: $purchaseId');
+            final Map<String, dynamic> changed = getPurchaseChallanChanges(
+              postData: data,
+              fetchedData: previousAPIData,
+            );
 
-        showMessage(
-          purchaseId==0? 'Challan already exists': 'Challan saved offline',
-          ToastType.info,
-        );
+            if (changed.isEmpty) {
 
-        if(purchaseId!=0) {
-          clearAll();
+              showMessage(
+                'No changes detected',
+                ToastType.error,
+              );
+              return false;
+            } else {
+              debugPrint('changes detected');
+              debugPrint(changed.toString());
+              var requestBody = data;
+              requestBody['id']= updateId;
+
+              response = await ApiProvider.createServerRequest(
+                apiUrl: updateChallanApi,
+                requestBody: requestBody,
+                isFormData: true,
+              );
+            }
+
+          } else {
+          response = await ApiProvider.createServerRequest(
+            apiUrl: submitChallanApi,
+            requestBody: data,
+            isFormData: true,
+          );
         }
-      } else {
-        final response = await ApiProvider.createServerRequest(
-          apiUrl: ApiPath.submitChallanApi,
-          requestBody: data,
-          isFormData: true,
-        );
 
-        if (response['status'] != null &&
-            response['status'] == true) {
-          print(response['message']);
 
+        if (response['error'] != null &&
+            response['error'] == true) {
+          showMessage(
+            response['msg']?? "",
+            ToastType.success,
+          );
           clearAll();
-        }
+          return true;
+        } else
+          {
+            showMessage(
+              response['msg']?? "",
+              ToastType.error,
+            );
+          }
 
-        showMessage(
-          response['message'],
-          ToastType.info,
-        );
-      }
+        print('Submit challan Detail');
+        print(response);
+
+
     } catch (e) {
       print('Submit challan error: $e');
 
@@ -255,18 +450,91 @@ class PurchaseController extends ChangeNotifier {
       updateSummery.update();
     }
 
+
+    return null;
+
   }
+
+
+  Future<Map<String, dynamic>> addProductParameters({
+    required String productId,
+    required Map<String, String> item,
+  }) async {
+    try {
+      final String barcodePrefix = await loadBarcodePrefix();
+      final String updateExisting = await loadMultipleBarcode();
+
+      final requestBody = {
+        'product_id': productId,
+        'barcode_prefix': barcodePrefix,
+        'update_existing': updateExisting.toString(),
+        'product_parameters': jsonEncode(item),
+      };
+
+      final response = await ApiProvider.createServerRequest(
+        apiUrl: ApiPath.addProductParameterApi,
+        requestBody: requestBody,
+        isFormData: true,
+      );
+
+      print(response);
+
+      if (response['error'] == true) {
+        final data = response['data'];
+
+        return {
+          'code': response['code'] ?? 1,
+          'error': true,
+          'message': response['message']?.toString() ??
+              'Product parameter processed successfully.',
+          'id': data is Map ? data['id'] : null,
+          'barcode': data is Map
+              ? data['barcode']?.toString() ?? ''
+              : '',
+          'action': data is Map
+              ? data['action']?.toString() ?? ''
+              : '',
+          'data': data,
+        };
+      }
+
+      return {
+        'code': response['code'] ?? 0,
+        'error': false,
+        'message': response['message']?.toString() ?? 'Request failed.',
+        'id': null,
+        'barcode': '',
+        'action': '',
+        'data': response['data'],
+      };
+    } catch (e) {
+      return {
+        'code': 0,
+        'error': false,
+        'message': e.toString(),
+        'id': null,
+        'barcode': '',
+        'action': '',
+        'data': null,
+      };
+    }
+  }
+
+
 
   Map<String, dynamic> toJsonMap() {
     
     return {
+      'uid': GlobalVars.userId,
       'selectSupplier': selectSupplier?.id,
+      'selectedSeries': selectedSeries?.id,
       'gstNo': gstNo,
       'selectedStore': selectedStore?.id ?? '',
       'challanNo': challanNo,
       'lrNo': lrNoController.text,
       'lrDate': lrDateController.text,
       'remark': remarkController.text,
+      'status': 'pending',
       'selectedData': selectedData,
       'selectedTransport': selectedTransport?.id ?? '',
       'selectedAgent': selectedAgent?.id ?? '',
@@ -288,7 +556,7 @@ class PurchaseController extends ChangeNotifier {
       'finalDiscount': finalDiscount.toString(),
       'valueOfGood': getTotalGoodsValue.toString(),
       'taxableAmount': valueOfTaxableGoods().toString(),
-      if (selectSupplier?.state.id != GlobalVars.placeOfSupplyId) ...{
+      if (selectSupplier?.state?.id != GlobalVars.placeOfSupplyId) ...{
         'igst': igst.toString(),
         'sgst': '',
         'cgst': '',
@@ -307,77 +575,144 @@ class PurchaseController extends ChangeNotifier {
     notifyListeners();
   }
 
+
   Future<bool> deleteDraftItem({
     required String partyId,
     required String draftId,
   }) async {
-    var challanValue = await ChallanCartStorage.deleteDraftItemById(
-      partyId: partyId,
+    return ChallanCartStorage.deleteDraftItemById(
+      challanType: '${draftType}_$partyId',
+      supplierId: partyId,
       draftId: draftId,
     );
-    return true;
   }
+
 
   Future<void> delAllDraft() async {
     // delete all data
     // await ChallanCartStorage.clearAll();
   }
 
-  Future<void> getDraftData(String value) async {
-    chargeData = await extraChargeController.searchOtherCharges('');
 
-    selectedDraft = value;
-    items.clear();
+  Future<void> getDraftData(String draftName) async {
+    final supplier = selectSupplier;
 
-    String draftName = selectSupplier!.id;
-    if (selectedDraft.isNotEmpty) {
-      draftName = '${selectSupplier!.id}_$selectedDraft';
+    if (supplier == null) {
+      debugPrint('Cannot load draft: no supplier selected');
+      return;
     }
 
-    var challanValue = await ChallanCartStorage.get(draftName);
-    if (challanValue != null) {
-      setDraftData(challanValue);
-    }
+    final name = draftName.trim();
+    if (name.isEmpty) return;
 
-    notifyListeners();
+    // Use the supplied draft name directly for both types.
+    final String key = name;
+
+    try {
+      chargeData = await extraChargeController.searchOtherCharges('');
+
+      final draftData = await ChallanCartStorage.get(key);
+
+      if (draftData == null) {
+        debugPrint('Draft not found: $key');
+        notifyListeners();
+        return;
+      }
+
+      setDraftData(draftData);
+      selectedDraft = name;
+
+      if (items.isEmpty) {
+        addItem();
+      }
+
+      notifyListeners();
+      debugPrint('Draft loaded successfully: $key');
+    } catch (e, stackTrace) {
+      debugPrint('Error loading draft: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      notifyListeners();
+    }
   }
 
-  void setSupplier(Party? value) async {
-    if (selectSupplier != null) {
-      if (items.isNotEmpty) {
-        await ChallanCartStorage.save(toDataMap(), selectSupplier!.id);
-      }
-      extraChargeController.delItem();
-      lrNoController.clear();
-      lrDateController.clear();
-      finalDiscount = 0;
+  void _clearItemsWithoutNotify() {
+    for (final item in items) {
+      item.dispose();
+    }
+    items.clear();
+  }
+
+
+  Future deleteCurrentDraft() async {
+    await ChallanCartStorage.deleteById(
+      key: '${draftType}_${selectSupplier!.id}',
+    );
+  }
+
+  Future<void> setSupplier(Party? value) async {
+    // Save current supplier's working challan before switching.
+    if (selectSupplier != null && items.isNotEmpty) {
+      await ChallanCartStorage.save(
+        toDataMap(),
+        key: '${draftType}_${selectSupplier!.id}',
+      );
     }
 
-    items.clear();
-    var challanValue = await ChallanCartStorage.get(value!.id);
-    if (challanValue != null) {
-      setDraftData(challanValue);
+    extraChargeController.delItem();
+    _clearItemsWithoutNotify();
+
+    lrNoController.clear();
+    lrDateController.clear();
+    remarkController.clear();
+    finalDiscount = 0;
+    additionalDiscountTotal = 0;
+    additionalDiscountList = [];
+    additionalChargeList = [];
+    additionalChargeValue = 0;
+    selectedDraft = '';
+
+    selectSupplier = value;
+
+    if (value == null) {
+      gstNo = '';
+      selectedTransport = null;
+      addItem();
+      notifyListeners();
+      await getProductList('');
+      return;
+    }
+
+    GlobalVars.supplierCatMargin = value.categoryMargins;
+
+    chargeData = await extraChargeController.searchOtherCharges('');
+
+    final Map<String, dynamic>? savedData = await ChallanCartStorage.get('${draftType}_${selectSupplier!.id}');
+
+    if (savedData != null) {
+      setDraftData(savedData);
     }
 
     gstNo = value.gstNo;
 
-    if (value.transport.name.isNotEmpty) {
+    if (value.transport != null && value.transport!.name.isNotEmpty) {
       selectedTransport = TransportModel(
-        id: value.transport.id,
-        transport: value.transport.name,
+        id: value.transport!.id,
+        transport: value.transport!.name,
         owner: '',
         mobile: '',
         location: '',
         address: '',
       );
+    } else {
+      selectedTransport = null;
     }
 
     if (items.isEmpty) {
       addItem();
     }
+
     notifyListeners();
-    selectSupplier = value;
-    getProductList('');
+    await getProductList('');
   }
 
   void setStore(StoreModel? store) {
@@ -404,6 +739,8 @@ class PurchaseController extends ChangeNotifier {
     item.brandController.text = product.brand!.name ?? "";
     item.quantityController.text = qty ?? '1';
     item.discountController.text = '0';
+    item.productPrice = 0;
+    item.priceController.clear();
     notifyListeners();
   }
 
@@ -425,9 +762,9 @@ class PurchaseController extends ChangeNotifier {
       requestBody: requestBody,
       isFormData: true,
     );
-
     if (response['error'] != null && response['error']) {
       try {
+        print(response);
         var data = ProductListResponse.fromJson(response);
         products = data.productList;
       } catch (e) {}
@@ -743,65 +1080,23 @@ class PurchaseController extends ChangeNotifier {
 
     items.clear();
     extraChargeController.delItem();
+    deleteCurrentDraft();
 
     notifyListeners();
   }
 
-  // ============================================================
-  // GENERATE CHALLAN
-  // ============================================================
 
-  void generateChallan(
-    BuildContext context,
-    PurchaseController controller,
-    ExtraChargeController extraCharge,
-  ) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChallanPage(
-          controller: controller,
-          extraChargeController: extraCharge,
-        ),
-      ),
-    );
-
-    debugPrint('======================================');
-
-    debugPrint('Generating Purchase Challan');
-
-    debugPrint('Agent: $selectedAgent');
-
-    debugPrint('Total Items: $totalItems');
-
-    debugPrint('Total Quantity: $totalQuantity');
-
-    debugPrint('Value of Goods: $valueOfTaxableGoods');
-
-    debugPrint('Discount: $applyDiscountController');
-
-    debugPrint('Additional Charge: $additionalCharge');
-
-    debugPrint('SGST: $sgst');
-
-    debugPrint('CGST: $cgst');
-
-    debugPrint('Grand Total: $grandTotal');
-
-    debugPrint('======================================');
-
-    // TODO:
-    // API CALL
+  Future<void> saveCurrentSupplierData() async {
+    if (selectSupplier != null && items.isNotEmpty) {
+      await ChallanCartStorage.save(
+        toDataMap(),
+        key: '${draftType}_${selectSupplier!.id}',
+      );
+    }
   }
 
   @override
-  Future<void> dispose() async {
-    if (selectSupplier != null) {
-      if (items.isNotEmpty) {
-        await ChallanCartStorage.save(toDataMap(), selectSupplier!.id);
-      }
-    }
-
+  void dispose() {
     lrNoController.dispose();
     lrDateController.dispose();
     remarkController.dispose();
@@ -812,6 +1107,8 @@ class PurchaseController extends ChangeNotifier {
     }
 
     items.clear();
+    extraChargeController.dispose();
+
     super.dispose();
   }
 }

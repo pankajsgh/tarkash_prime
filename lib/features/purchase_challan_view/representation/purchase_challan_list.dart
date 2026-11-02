@@ -3,10 +3,19 @@ import 'package:calculation_panel/core/theme/colors.dart';
 import 'package:calculation_panel/core/widget/intractive_loder.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
+
+import '../../../core/network/api_path.dart';
+import '../../../core/network/api_repository.dart';
+import '../../../core/routes/routes.dart';
 import '../../../core/vars/global_vars.dart';
 import '../../dashboard/data/controller/routes_controller.dart';
+import '../../log_detail/view/log_detail_screen.dart';
+import '../../purchase_challan/model/purchase_challan_detail_model.dart';
 import '../controller/purchase_challan_list_controller.dart';
 import '../model/purchase_challan_list_model.dart';
+import 'challan_detail_page.dart';
+import 'challan_pdf_servies.dart';
 
 // ============================================================
 // PURCHASE CHALLAN LIST PAGE
@@ -15,10 +24,7 @@ import '../model/purchase_challan_list_model.dart';
 class PurchaseChallanListPage extends StatefulWidget {
   final RoutesController routesController;
 
-  const PurchaseChallanListPage({
-    super.key,
-    required this.routesController,
-  });
+  const PurchaseChallanListPage({super.key, required this.routesController});
 
   @override
   State<PurchaseChallanListPage> createState() =>
@@ -28,36 +34,32 @@ class PurchaseChallanListPage extends StatefulWidget {
 class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
   late final PurchaseChallanListController controller;
 
-  final TextEditingController searchController =
-  TextEditingController();
+  final TextEditingController searchController = TextEditingController();
 
   String searchText = '';
 
-// Expanded challan IDs.
   final Set<String> expandedIds = <String>{};
 
-// ==========================================================
-// INIT
-// ==========================================================
+  // ==========================================================
+  // INIT
+  // ==========================================================
 
   @override
   void initState() {
     super.initState();
 
-    GlobalVars.globalRoutes = "/purchaseChallanList";
+    GlobalVars.globalRoutes = Routes.purchaseChallanList;
 
-    controller = PurchaseChallanListController(
-      dio: Dio(),
-    );
+    controller = PurchaseChallanListController(listApi: ApiPath.purchaseChallansListApi);
 
     controller.getAllChallans();
 
     searchController.addListener(_onSearchChanged);
   }
 
-// ==========================================================
-// SEARCH
-// ==========================================================
+  // ==========================================================
+  // SEARCH
+  // ==========================================================
 
   void _onSearchChanged() {
     if (!mounted) return;
@@ -84,9 +86,9 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     }).toList();
   }
 
-// ==========================================================
-// DISPOSE
-// ==========================================================
+  // ==========================================================
+  // DISPOSE
+  // ==========================================================
 
   @override
   void dispose() {
@@ -97,14 +99,14 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     super.dispose();
   }
 
-// ==========================================================
-// BUILD
-// ==========================================================
+  // ==========================================================
+  // BUILD
+  // ==========================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffF4F5F7),
+      backgroundColor: const Color(0xffF3F5F7),
       body: SafeArea(
         child: Column(
           children: [
@@ -128,9 +130,9 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// HEADER
-// ==========================================================
+  // ==========================================================
+  // HEADER
+  // ==========================================================
 
   Widget _buildHeader() {
     final total = controller.challans.length;
@@ -138,177 +140,186 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        14,
-        10,
-        14,
-        10,
-      ),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xffDDE1E5),
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xffDEE2E6))),
       ),
-      child: Row(
-        children: [
-// --------------------------------------------------
-// ICON
-// --------------------------------------------------
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 900;
 
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: themeColor,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(
-              Icons.receipt_long_rounded,
-              size: 20,
-              color: Colors.white,
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-// --------------------------------------------------
-// TITLE
-// --------------------------------------------------
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (compact) {
+            return Column(
               children: [
-                const Text(
-                  'Purchase Challans',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xff191C20),
-                  ),
-                ),
-                const SizedBox(height: 3),
                 Row(
                   children: [
-                    _countBadge(
-                      searchText.isEmpty
-                          ? total
-                          : filtered,
+                    _buildHeaderIcon(),
+                    const SizedBox(width: 9),
+                    Expanded(child: _buildHeaderTitle(total, filtered)),
+                    const SizedBox(width: 7),
+                    _headerButton(
+                      icon: Icons.refresh_rounded,
+                      tooltip: 'Refresh',
+                      loading: controller.isLoading,
+                      onTap: controller.isLoading
+                          ? null
+                          : controller.getAllChallans,
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      searchText.isEmpty
-                          ? 'records'
-                          : 'of $total records',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Color(0xff777C82),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    const SizedBox(width: 6),
+                    _newChallanButton(compact: true),
                   ],
                 ),
+                const SizedBox(height: 7),
+                SizedBox(
+                  width: double.infinity,
+                  height: 36,
+                  child: _buildSearchField(),
+                ),
               ],
-            ),
-          ),
+            );
+          }
 
-// --------------------------------------------------
-// SEARCH
-// --------------------------------------------------
-
-          SizedBox(
-            width: 290,
-            height: 38,
-            child: _buildSearchField(),
-          ),
-
-          const SizedBox(width: 8),
-
-// --------------------------------------------------
-// REFRESH
-// --------------------------------------------------
-
-          _headerButton(
-            icon: Icons.refresh_rounded,
-            tooltip: 'Refresh',
-            loading: controller.isLoading,
-            onTap: controller.isLoading
-                ? null
-                : controller.getAllChallans,
-          ),
-
-          const SizedBox(width: 8),
-
-// --------------------------------------------------
-// NEW CHALLAN
-// --------------------------------------------------
-
-          SizedBox(
-            height: 38,
-            child: ElevatedButton.icon(
-              onPressed: _createNewChallan,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: themeColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+          return Row(
+            children: [
+              _buildHeaderIcon(),
+              const SizedBox(width: 9),
+              Expanded(child: _buildHeaderTitle(total, filtered)),
+              const SizedBox(width: 12),
+              SizedBox(width: 260, height: 36, child: _buildSearchField()),
+              const SizedBox(width: 6),
+              _headerButton(
+                icon: Icons.refresh_rounded,
+                tooltip: 'Refresh',
+                loading: controller.isLoading,
+                onTap: controller.isLoading ? null : controller.getAllChallans,
               ),
-              icon: const Icon(
-                Icons.add_rounded,
-                size: 17,
-              ),
-              label: const Text(
-                'New Challan',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
+              const SizedBox(width: 6),
+              _newChallanButton(),
+            ],
+          );
+        },
       ),
     );
   }
 
-// ==========================================================
-// COUNT BADGE
-// ==========================================================
+  // ==========================================================
+  // HEADER ICON
+  // ==========================================================
+
+  Widget _buildHeaderIcon() {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: themeColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(
+        Icons.receipt_long_rounded,
+        size: 19,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  // ==========================================================
+  // HEADER TITLE
+  // ==========================================================
+
+  Widget _buildHeaderTitle(int total, int filtered) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Purchase Challans',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: Color(0xff202328),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            _countBadge(searchText.isEmpty ? total : filtered),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                searchText.isEmpty ? 'records' : 'of $total records',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xff858A90),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ==========================================================
+  // COUNT BADGE
+  // ==========================================================
 
   Widget _countBadge(int value) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 7,
-        vertical: 2.5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xffEEF0F2),
+        color: const Color(0xffEEF1F3),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
         '$value',
         style: const TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-          color: Color(0xff454A50),
+          fontSize: 8.5,
+          fontWeight: FontWeight.w700,
+          color: Color(0xff4C5258),
         ),
       ),
     );
   }
 
-// ==========================================================
-// HEADER BUTTON
-// ==========================================================
+  // ==========================================================
+  // NEW CHALLAN BUTTON
+  // ==========================================================
+
+  Widget _newChallanButton({bool compact = false}) {
+    return SizedBox(
+      height: 36,
+      child: ElevatedButton.icon(
+        onPressed: _createNewChallan,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: themeColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: compact ? 9 : 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+        ),
+        icon: const Icon(Icons.add_rounded, size: 16),
+        label: compact
+            ? const Text(
+                'New',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+              )
+            : const Text(
+                'New Challan',
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
+              ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // HEADER BUTTON
+  // ==========================================================
 
   Widget _headerButton({
     required IconData icon,
@@ -319,100 +330,88 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: const Color(0xffF0F1F3),
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xffF0F2F4),
+        borderRadius: BorderRadius.circular(7),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(7),
           child: SizedBox(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             child: loading
                 ? const Padding(
-              padding: EdgeInsets.all(11),
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Color(0xff555A60),
-              ),
-            )
-                : Icon(
-              icon,
-              size: 19,
-              color: const Color(0xff35393E),
-            ),
+                    padding: EdgeInsets.all(10),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xff555A60),
+                    ),
+                  )
+                : Icon(icon, size: 18, color: const Color(0xff3D4247)),
           ),
         ),
       ),
     );
   }
 
-// ==========================================================
-// SEARCH FIELD
-// ==========================================================
+  // ==========================================================
+  // SEARCH FIELD
+  // ==========================================================
 
   Widget _buildSearchField() {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xffF7F8F9),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: const Color(0xffD9DDE2),
-        ),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: const Color(0xffD9DDE2)),
       ),
       child: TextField(
         controller: searchController,
         style: const TextStyle(
-          fontSize: 12,
+          fontSize: 11.5,
           fontWeight: FontWeight.w500,
           color: Color(0xff292D32),
         ),
         decoration: InputDecoration(
-          hintText:
-          'Search challan, supplier, GST, LR...',
-          hintStyle: const TextStyle(
-            fontSize: 11,
-            color: Color(0xff969BA1),
-          ),
+          hintText: 'Search challan, supplier, GST, LR...',
+          hintStyle: const TextStyle(fontSize: 10.5, color: Color(0xff969BA1)),
           prefixIcon: const Icon(
             Icons.search_rounded,
-            size: 18,
+            size: 17,
             color: Color(0xff777C82),
           ),
           suffixIcon: searchText.isNotEmpty
               ? IconButton(
-            onPressed: searchController.clear,
-            splashRadius: 16,
-            padding: EdgeInsets.zero,
-            icon: const Icon(
-              Icons.close_rounded,
-              size: 16,
-              color: Color(0xff777C82),
-            ),
-          )
+                  onPressed: searchController.clear,
+                  splashRadius: 15,
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 15,
+                    color: Color(0xff777C82),
+                  ),
+                )
               : null,
           border: InputBorder.none,
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 8,
-            vertical: 10,
+            vertical: 9,
           ),
         ),
       ),
     );
   }
 
-// ==========================================================
-// BODY
-// ==========================================================
+  // ==========================================================
+  // BODY
+  // ==========================================================
 
   Widget _buildBody() {
-    if (controller.isLoading &&
-        controller.challans.isEmpty) {
+    if (controller.isLoading && controller.challans.isEmpty) {
       return InteractiveLoadingView();
     }
 
-    if (controller.errorMessage != null &&
-        controller.challans.isEmpty) {
+    if (controller.errorMessage != null && controller.challans.isEmpty) {
       return _buildError();
     }
 
@@ -423,67 +422,48 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        12,
-        12,
-        12,
-        14,
-      ),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       child: ListView.builder(
         padding: EdgeInsets.zero,
         itemCount: data.length,
         itemBuilder: (context, index) {
-          return _buildChallanCard(
-            data[index],
-            index,
-          );
+          return _buildChallanCard(data[index], index);
         },
       ),
     );
   }
 
-// ==========================================================
-// CHALLAN CARD
-// ==========================================================
+  // ==========================================================
+  // CHALLAN CARD
+  // ==========================================================
 
-  Widget _buildChallanCard(
-      PurchaseChallanListModel challan,
-      int index,
-      ) {
-    final isExpanded =
-    expandedIds.contains(challan.id);
+  Widget _buildChallanCard(PurchaseChallanListModel challan, int index) {
+    final isExpanded = expandedIds.contains(challan.id);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 7),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(9),
         border: Border.all(
           color: isExpanded
-              ? const Color(0xffC9CDD2)
+              ? themeColor.withValues(alpha: .35)
               : const Color(0xffE0E3E7),
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 5,
-            offset: Offset(0, 2),
+            color: Colors.black.withValues(alpha: .025),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          _buildCompactRow(
-            challan,
-            index,
-            isExpanded,
-          ),
-
+          _buildCompactRow(challan, index, isExpanded),
           AnimatedCrossFade(
-            duration: const Duration(
-              milliseconds: 220,
-            ),
+            duration: const Duration(milliseconds: 200),
             firstCurve: Curves.easeOut,
             secondCurve: Curves.easeIn,
             crossFadeState: isExpanded
@@ -497,161 +477,153 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// COMPACT ROW
-// ==========================================================
+  // ==========================================================
+  // COMPACT ROW
+  // ==========================================================
 
   Widget _buildCompactRow(
-      PurchaseChallanListModel challan,
-      int index,
-      bool isExpanded,
-      ) {
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 74,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 8,
-      ),
+    PurchaseChallanListModel challan,
+    int index,
+    bool isExpanded,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+
+        if (width < 760) {
+          return _buildSmallCompactRow(challan, index, isExpanded);
+        }
+
+        return Container(
+          constraints: const BoxConstraints(minHeight: 68),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          child: Row(
+            children: [
+              _indexBox(index),
+              const SizedBox(width: 8),
+
+              Expanded(flex: 3, child: _buildMainInfo(challan)),
+
+              const SizedBox(width: 10),
+
+              SizedBox(
+                width: 80,
+                child: _compactInfo(
+                  Icons.storefront_outlined,
+                  'Store',
+                  challan.storeName,
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              SizedBox(
+                width: 160,
+                child: _compactInfo(
+                  Icons.local_shipping_outlined,
+                  'Transport',
+                  challan.transportName,
+                ),
+              ),
+
+              const SizedBox(width: 20),
+
+              SizedBox(
+                width: 48,
+                child: _compactInfo(
+                  Icons.inventory_2_outlined,
+                  'Items',
+                  '${challan.itemCount}',
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              _buildStatus(challan.status),
+
+              const SizedBox(width: 10),
+
+              SizedBox(
+                width: 100,
+                child: _buildGrandTotalCompact(challan.grandTotal),
+              ),
+
+              const SizedBox(width: 9),
+
+              _buildActions(challan, isExpanded),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================================================
+  // SMALL COMPACT ROW
+  // ==========================================================
+
+  Widget _buildSmallCompactRow(
+    PurchaseChallanListModel challan,
+    int index,
+    bool isExpanded,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
       child: Row(
         children: [
-// --------------------------------------------------
-// NUMBER
-// --------------------------------------------------
+          _indexBox(index),
+          const SizedBox(width: 8),
 
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xffF0F2F4),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Text(
-              '${index + 1}',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: Color(0xff70757B),
-              ),
-            ),
-          ),
+          Expanded(child: _buildMainInfo(challan)),
 
-          const SizedBox(width: 9),
+          const SizedBox(width: 8),
 
-// --------------------------------------------------
-// MAIN INFORMATION
-// --------------------------------------------------
+          _buildStatus(challan.status),
 
-          Expanded(
-            flex: 3,
-            child: _buildMainInfo(challan),
-          ),
+          const SizedBox(width: 8),
 
-          const SizedBox(width: 14),
+          _buildGrandTotalCompact(challan.grandTotal),
 
-// --------------------------------------------------
-// STORE
-// --------------------------------------------------
+          const SizedBox(width: 7),
 
-          SizedBox(
-            width: 135,
-            child: _compactInfo(
-              Icons.storefront_outlined,
-              'Store',
-              challan.storeName,
-            ),
-          ),
-
-          const SizedBox(width: 14),
-
-// --------------------------------------------------
-// TRANSPORT
-// --------------------------------------------------
-
-          SizedBox(
-            width: 155,
-            child: _compactInfo(
-              Icons.local_shipping_outlined,
-              'Transport',
-              challan.transportName,
-            ),
-          ),
-
-          const SizedBox(width: 14),
-
-// --------------------------------------------------
-// ITEMS
-// --------------------------------------------------
-
-          SizedBox(
-            width: 60,
-            child: _compactInfo(
-              Icons.inventory_2_outlined,
-              'Items',
-              '${challan.itemCount}',
-            ),
-          ),
-
-          const SizedBox(width: 14),
-
-// --------------------------------------------------
-// GRAND TOTAL
-// --------------------------------------------------
-
-          SizedBox(
-            width: 115,
-            child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.end,
-              mainAxisAlignment:
-              MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'GRAND TOTAL',
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xff92979D),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _money(challan.grandTotal),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-// --------------------------------------------------
-// ACTIONS
-// --------------------------------------------------
-
-          _buildActions(
-            challan,
-            isExpanded,
-          ),
+          _buildExpandButton(challan.id, isExpanded),
         ],
       ),
     );
   }
 
-// ==========================================================
-// MAIN INFO
-// ==========================================================
+  // ==========================================================
+  // INDEX BOX
+  // ==========================================================
 
-  Widget _buildMainInfo(
-      PurchaseChallanListModel challan,
-      ) {
+  Widget _indexBox(int index) {
+    return Container(
+      width: 27,
+      height: 27,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xffF0F2F4),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '${index + 1}',
+        style: const TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: Color(0xff70757B),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // MAIN INFO
+  // ==========================================================
+
+  Widget _buildMainInfo(PurchaseChallanListModel challan) {
+
+    final supplier = challan.supplierName ?? '';
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -662,56 +634,55 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
               child: Text(
                 challan.challanNo.isEmpty
                     ? 'No Challan No.'
-                    : '#${challan.challanNo}',
+                    : '#${challan.referenceNo}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xff292D32),
                 ),
               ),
             ),
-
-            const SizedBox(width: 7),
-
+            const SizedBox(width: 6),
             _statusBadge('PURCHASE'),
           ],
         ),
-
-        const SizedBox(height: 5),
-
+        const SizedBox(height: 4),
         Row(
           children: [
             const Icon(
               Icons.calendar_today_outlined,
-              size: 12,
-              color: Color(0xff858A90),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              _formatDate(challan.challanDate),
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: Color(0xff656A70),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(
-              Icons.person_outline_rounded,
-              size: 13,
+              size: 11,
               color: Color(0xff858A90),
             ),
             const SizedBox(width: 4),
             Flexible(
               child: Text(
-                challan.supplierId.isEmpty
-                    ? 'Supplier -'
-                    : 'Supplier ${getSupplierName(challan.supplierId)}',
+                _formatDate(challan.challanDate),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xff656A70),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.person_outline_rounded,
+              size: 12,
+              color: Color(0xff858A90),
+            ),
+            const SizedBox(width: 3),
+            Flexible(
+              child: Text(
+                supplier.isEmpty ? 'Supplier -' : supplier,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 9.5,
                   color: Color(0xff656A70),
                   fontWeight: FontWeight.w500,
                 ),
@@ -723,32 +694,12 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-  String getSupplierName(String id) {
-    final list = partyJson['PartyList'] as List<dynamic>?;
+  // ==========================================================
+  // COMPACT INFO
+  // ==========================================================
 
-    if (list == null || id.trim().isEmpty) {
-      return '';
-    }
-
-    final party = list.cast<Map<String, dynamic>>().firstWhere(
-          (e) => e['id']?.toString() == id.toString(),
-      orElse: () => <String, dynamic>{},
-    );
-
-    return party['company']?.toString() ?? '';
-  }
-
-// ==========================================================
-// COMPACT INFO
-// ==========================================================
-
-  Widget _compactInfo(
-      IconData icon,
-      String label,
-      String value,
-      ) {
-    final displayValue =
-    value.trim().isEmpty ? '-' : value.trim();
+  Widget _compactInfo(IconData icon, String label, String value) {
+    final displayValue = value.trim().isEmpty ? '-' : value.trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -756,32 +707,30 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              size: 12,
-              color: const Color(0xff858A90),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 7.5,
-                fontWeight: FontWeight.w600,
-                letterSpacing: .3,
-                color: Color(0xff999EA4),
+            Icon(icon, size: 11, color: const Color(0xff858A90)),
+            const SizedBox(width: 3),
+            Flexible(
+              child: Text(
+                label.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 7,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .2,
+                  color: Color(0xff999EA4),
+                ),
               ),
             ),
           ],
         ),
-
-        const SizedBox(height: 4),
-
+        const SizedBox(height: 3),
         Text(
           displayValue,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontSize: 10.5,
+            fontSize: 9.5,
             fontWeight: FontWeight.w700,
             color: Color(0xff41464C),
           ),
@@ -790,16 +739,128 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// STATUS BADGE
-// ==========================================================
+  // ==========================================================
+  // STATUS
+  // ==========================================================
+
+  Widget _buildStatus(String status) {
+    final value = status.trim().toLowerCase();
+
+    Color backgroundColor;
+    Color borderColor;
+    Color textColor;
+    Color dotColor;
+    String label;
+    IconData icon;
+
+    switch (value) {
+      case 'completed':
+        backgroundColor = const Color(0xffEAF7EF);
+        borderColor = const Color(0xffCBEAD6);
+        textColor = const Color(0xff27804A);
+        dotColor = const Color(0xff2E9B57);
+        label = 'Completed';
+        icon = Icons.check_circle_outline_rounded;
+        break;
+
+      case 'cancel':
+      case 'cancelled':
+      case 'canceled':
+        backgroundColor = const Color(0xffFDECEC);
+        borderColor = const Color(0xffF3C6C6);
+        textColor = const Color(0xffC62828);
+        dotColor = const Color(0xffD32F2F);
+        label = 'Cancelled';
+        icon = Icons.cancel_outlined;
+        break;
+
+      case 'pending':
+      default:
+        backgroundColor = const Color(0xffFFF5E6);
+        borderColor = const Color(0xffF3D9A8);
+        textColor = const Color(0xffA96812);
+        dotColor = const Color(0xffD88A18);
+        label = 'Pending';
+        icon = Icons.schedule_outlined;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 7,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: borderColor,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 11,
+            color: dotColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================
+  // GRAND TOTAL COMPACT
+  // ==========================================================
+
+  Widget _buildGrandTotalCompact(double value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'GRAND TOTAL',
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 7,
+            fontWeight: FontWeight.w700,
+            color: Color(0xff92979D),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          _money(value),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xff25292D),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================================
+  // STATUS BADGE
+  // ==========================================================
 
   Widget _statusBadge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 6,
-        vertical: 3,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
       decoration: BoxDecoration(
         color: const Color(0xffEEF0F2),
         borderRadius: BorderRadius.circular(4),
@@ -807,116 +868,87 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 7,
-          fontWeight: FontWeight.w600,
-          letterSpacing: .3,
+          fontSize: 6.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: .25,
           color: Color(0xff666B71),
         ),
       ),
     );
   }
 
-// ==========================================================
-// ACTIONS
-// ==========================================================
+  // ==========================================================
+  // ACTIONS
+  // ==========================================================
 
-  Widget _buildActions(
-      PurchaseChallanListModel challan,
-      bool isExpanded,
-      ) {
+  Widget _buildActions(PurchaseChallanListModel challan, bool isExpanded) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-// ----------------------------------------------------
-// VIEW
-// ----------------------------------------------------
-
         _actionButton(
           icon: Icons.visibility_outlined,
           tooltip: 'View',
           onTap: () => _openChallan(challan),
         ),
-
-        const SizedBox(width: 5),
-
-// ----------------------------------------------------
-// EDIT
-// ----------------------------------------------------
-
+        const SizedBox(width: 6),
         _actionButton(
           icon: Icons.edit_outlined,
           tooltip: 'Edit',
           onTap: () => _editChallan(challan),
         ),
-
-        const SizedBox(width: 5),
-
-// ----------------------------------------------------
-// PRINT
-// ----------------------------------------------------
-
+        const SizedBox(width: 6),
         _actionButton(
           icon: Icons.print_outlined,
           tooltip: 'Print',
-          onTap: () => _printChallan(challan),
+          onTap: () => openChallanPdf(challan),
         ),
-
-        const SizedBox(width: 7),
-
-// ----------------------------------------------------
-// EXPAND
-// ----------------------------------------------------
-
-        Tooltip(
-          message: isExpanded
-              ? 'Collapse'
-              : 'Show full details',
-          child: Material(
-            color: isExpanded
-                ?  themeColor
-                : const Color(0xffF0F2F4),
-            borderRadius: BorderRadius.circular(7),
-            child: InkWell(
-              onTap: () => _toggleExpanded(challan.id),
-              borderRadius: BorderRadius.circular(7),
-              child: AnimatedContainer(
-                duration: const Duration(
-                  milliseconds: 180,
-                ),
-                width: 34,
-                height: 32,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(
-                    color: isExpanded
-                        ? const Color(0xff202328)
-                        : const Color(0xffD9DDE2),
-                  ),
-                ),
-                child: AnimatedRotation(
-                  turns: isExpanded ? .5 : 0,
-                  duration: const Duration(
-                    milliseconds: 180,
-                  ),
-                  child: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 20,
-                    color: isExpanded
-                        ? Colors.white
-                        : const Color(0xff4D5258),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        const SizedBox(width: 6),
+        _buildExpandButton(challan.id, isExpanded),
       ],
     );
   }
 
-// ==========================================================
-// ACTION BUTTON
-// ==========================================================
+  // ==========================================================
+  // EXPAND BUTTON
+  // ==========================================================
+
+  Widget _buildExpandButton(String id, bool isExpanded) {
+    return Tooltip(
+      message: isExpanded ? 'Collapse' : 'Show details',
+      child: Material(
+        color: isExpanded ? themeColor : const Color(0xffF0F2F4),
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          onTap: () => _toggleExpanded(id),
+          borderRadius: BorderRadius.circular(6),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isExpanded ? themeColor : const Color(0xffD9DDE2),
+              ),
+            ),
+            child: AnimatedRotation(
+              turns: isExpanded ? .5 : 0,
+              duration: const Duration(milliseconds: 180),
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 19,
+                color: isExpanded ? Colors.white : const Color(0xff4D5258),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // ACTION BUTTON
+  // ==========================================================
 
   Widget _actionButton({
     required IconData icon,
@@ -927,97 +959,346 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
       message: tooltip,
       child: Material(
         color: const Color(0xffF4F5F6),
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(6),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(6),
           child: Container(
-            width: 32,
-            height: 32,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: const Color(0xffDDE1E5),
-              ),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xffDDE1E5)),
             ),
-            child: Icon(
-              icon,
-              size: 15,
-              color: const Color(0xff4A4F55),
-            ),
+            child: Icon(icon, size: 14, color: const Color(0xff4A4F55)),
           ),
         ),
       ),
     );
   }
 
-// ==========================================================
-// EXPANDED DATA
-// ==========================================================
+  // ==========================================================
+  // DELETE CHALLAN
+  // ==========================================================
 
-  Widget _buildExpandedData(
-      PurchaseChallanListModel challan,
-      ) {
+  Future<void> _deleteChallan(PurchaseChallanListModel challan) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 22,
+                color: Color(0xffD32F2F),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Delete Challan?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to delete challan '
+            '${challan.challanNo}?\n\n'
+            'All items and extra charges will also be deleted.',
+            style: const TextStyle(fontSize: 12.5, height: 1.4),
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              icon: const Icon(Icons.delete_outline, size: 16),
+              label: const Text('Delete'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xffD32F2F),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 22,
+              vertical: 20,
+            ),
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(width: 14),
+                const Text(
+                  'Deleting challan...',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xff3D4247),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final result = await controller.deleteChallan(challan.id, apiPath: ApiPath.deletePurchaseChallanApi,);
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (!mounted) return;
+
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Challan deleted successfully'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        await controller.getAllChallans();
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete challan: $e'),
+          backgroundColor: const Color(0xffD32F2F),
+        ),
+      );
+    }
+  }
+
+  // ==========================================================
+  // CANCEL CHALLAN
+  // ==========================================================
+
+  Future<void> _cancelChallan(PurchaseChallanListModel challan) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 22,
+                color: Color(0xffD32F2F),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Cancel Challan?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to cancel challan '
+            '${challan.challanNo}?',
+            style: const TextStyle(fontSize: 12.5, height: 1.4),
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Keep'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              icon: null,
+              label: const Text('Cancel Challan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 22,
+              vertical: 20,
+            ),
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(width: 14),
+                const Text(
+                  'Cancelling challan...',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xff3D4247),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final result = await controller.cancelChallan(challan.id);
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (!mounted) return;
+
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Challan cancelled successfully'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        await controller.getAllChallans();
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to cancel challan: $e'),
+          backgroundColor: const Color(0xffD32F2F),
+        ),
+      );
+    }
+  }
+
+  // ==========================================================
+  // EXPANDED DATA
+  // ==========================================================
+
+  Widget _buildExpandedData(PurchaseChallanListModel challan) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        13,
-        16,
-        14,
-      ),
+      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
       decoration: const BoxDecoration(
         color: Color(0xffF8F9FA),
-        border: Border(
-          top: BorderSide(
-            color: Color(0xffE1E4E7),
-          ),
-        ),
+        border: Border(top: BorderSide(color: Color(0xffE1E4E7))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-// --------------------------------------------------
-// DETAILS TITLE
-// --------------------------------------------------
+          // --------------------------------------------------
+          // TITLE
+          // --------------------------------------------------
 
           Row(
             children: [
-              const Icon(
-                Icons.article_outlined,
-                size: 16,
-                color: Color(0xff5D6369),
+              Container(
+                width: 27,
+                height: 27,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xffE0E3E6)),
+                ),
+                child: const Icon(
+                  Icons.article_outlined,
+                  size: 14,
+                  color: Color(0xff5D6369),
+                ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 7),
               const Text(
                 'Challan Details',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xff363B40),
                 ),
               ),
               const Spacer(),
-              Text(
-                'ID: ${challan.id}',
-                style: const TextStyle(
-                  fontSize: 9,
-                  color: Color(0xff92979D),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              _smallIdBadge(challan.id),
             ],
           ),
 
-          const SizedBox(height: 11),
+          const SizedBox(height: 9),
 
-// --------------------------------------------------
-// INFORMATION GRID
-// --------------------------------------------------
-
+          // --------------------------------------------------
+          // INFORMATION
+          // --------------------------------------------------
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 7,
+            runSpacing: 7,
             children: [
               _detailBox(
                 'Challan No.',
@@ -1034,26 +1315,14 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
                 challan.supplierId,
                 Icons.person_outline_rounded,
               ),
-              _detailBox(
-                'GST No.',
-                challan.gstNo,
-                Icons.badge_outlined,
-              ),
-              _detailBox(
-                'LR No.',
-                challan.lrNo,
-                Icons.local_shipping_outlined,
-              ),
+              _detailBox('GST No.', challan.gstNo, Icons.badge_outlined),
+              _detailBox('LR No.', challan.lrNo, Icons.local_shipping_outlined),
               _detailBox(
                 'LR Date',
                 _formatDate(challan.lrDate),
                 Icons.calendar_month_outlined,
               ),
-              _detailBox(
-                'Store',
-                challan.storeName,
-                Icons.storefront_outlined,
-              ),
+              _detailBox('Store', challan.storeName, Icons.storefront_outlined),
               _detailBox(
                 'Transport',
                 challan.transportName,
@@ -1064,100 +1333,61 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
                 challan.agentName,
                 Icons.person_outline_rounded,
               ),
-              _detailBox(
-                'Item Count',
-                '${challan.itemCount}',
-                Icons.inventory_2_outlined,
-              ),
+
             ],
           ),
 
-          const SizedBox(height: 12),
+          // --------------------------------------------------
+          // AMOUNT TITLE
+          // --------------------------------------------------
+          _sectionTitle(Icons.calculate_outlined, 'Amount Summary'),
 
-// --------------------------------------------------
-// AMOUNT SECTION
-// --------------------------------------------------
-
-          _sectionTitle(
-            Icons.calculate_outlined,
-            'Amount Summary',
-          ),
-
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
 
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 7,
+            runSpacing: 7,
             children: [
-              _amountBox(
-                'Goods Value',
-                challan.valueOfGood,
-              ),
+              _amountBox('Goods Value', challan.valueOfGood),
               _amountBox(
                 'Additional Discount',
                 challan.additionalDiscountTotal,
                 isDiscount: true,
               ),
-              _amountBox(
-                'Additional Charges',
-                challan.additionalChargeValue,
-              ),
+              _amountBox('Additional Charges', challan.additionalChargeValue),
               _amountBox(
                 'Final Discount',
                 challan.finalDiscount,
                 isDiscount: true,
               ),
-              _amountBox(
-                'Taxable Amount',
-                challan.taxableAmount,
-              ),
-              _amountBox(
-                'SGST',
-                challan.sgst,
-              ),
-              _amountBox(
-                'CGST',
-                challan.cgst,
-              ),
-              _amountBox(
-                'IGST',
-                challan.igst,
-              ),
-              _grandTotalBox(
-                challan.grandTotal,
-              ),
+              _amountBox('Taxable Amount', challan.taxableAmount),
+              _amountBox('SGST', challan.sgst),
+              _amountBox('CGST', challan.cgst),
+              _amountBox('IGST', challan.igst),
+              _grandTotalBox(challan.grandTotal),
             ],
           ),
 
-// --------------------------------------------------
-// REMARK
-// --------------------------------------------------
-
+          // --------------------------------------------------
+          // REMARK
+          // --------------------------------------------------
           if (challan.remark.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
-
-            _sectionTitle(
-              Icons.notes_outlined,
-              'Remark',
-            ),
-
-            const SizedBox(height: 7),
-
+            const SizedBox(height: 10),
+            _sectionTitle(Icons.notes_outlined, 'Remark'),
+            const SizedBox(height: 6),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(
-                  color: const Color(0xffE0E3E6),
-                ),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xffE0E3E6)),
               ),
               child: Text(
                 challan.remark,
                 style: const TextStyle(
-                  fontSize: 10.5,
-                  height: 1.4,
+                  fontSize: 10,
+                  height: 1.35,
                   color: Color(0xff4E5359),
                   fontWeight: FontWeight.w500,
                 ),
@@ -1165,99 +1395,255 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
             ),
           ],
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-// --------------------------------------------------
-// CREATED / UPDATED
-// --------------------------------------------------
+          // --------------------------------------------------
+          // FOOTER
+          // --------------------------------------------------
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 600) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _dateInfo('Created', challan.createdAt),
+                        ),
+                        Expanded(
+                          child: _dateInfo('Updated', challan.updatedAt),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if(challan.status=="pending")
+                        Expanded(child: _cancelButton(challan)),
+                        const SizedBox(width: 7),
+                        Expanded(child: _deleteButton(challan)),
+                      ],
+                    ),
+                  ],
+                );
+              }
 
-          Row(
-            children: [
-              _dateInfo(
-                'Created',
-                challan.createdAt,
-              ),
-              const SizedBox(width: 20),
-              _dateInfo(
-                'Updated',
-                challan.updatedAt,
-              ),
-            ],
+              return Row(
+                children: [
+                  _dateInfo('Created', challan.createdAt),
+                  const SizedBox(width: 18),
+                  _dateInfo('Updated', challan.updatedAt),
+                  const Spacer(),
+                  if(challan.status=="pending")
+                  _cancelButton(challan),
+                  const SizedBox(width: 7),
+                  _deleteButton(challan),
+                  const SizedBox(width: 7),
+                  _logButton(challan)
+                ],
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-// ==========================================================
-// DETAIL BOX
-// ==========================================================
+  // ==========================================================
+  // ID BADGE
+  // ==========================================================
 
-  Widget _detailBox(
-      String title,
-      String value,
-      IconData icon,
-      ) {
-    final displayValue =
-    value.trim().isEmpty ? '-' : value.trim();
+  Widget _smallIdBadge(String id) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xffEEF0F2),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        'ID: $id',
+        style: const TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w700,
+          color: Color(0xff858A90),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // CANCEL BUTTON
+  // ==========================================================
+
+  Widget _cancelButton(PurchaseChallanListModel challan) {
+    return SizedBox(
+      width: 120,
+      height: 33,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          if (challan != null) {
+            _cancelChallan(challan);
+          }
+        },
+        icon: const Icon(Icons.cancel_outlined, size: 15),
+        label: const Text(
+          'Cancel Challan',
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xff2563EB),
+          side: const BorderSide(color: Color(0xff93B4F5)),
+          backgroundColor: const Color(0xffF5F8FF),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showChallanLogs(
+      PurchaseChallanListModel challan,
+      ) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(20),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: SizedBox(
+            width: 900,
+            height: MediaQuery.of(dialogContext).size.height * 0.85,
+            child: LogListScreen(
+              invId: challan.id.toString(),
+              challanNo: challan.challanNo,
+              title: challan.referenceNo,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================================================
+  // DELETE BUTTON
+  // ==========================================================
+
+  Widget _deleteButton(PurchaseChallanListModel challan) {
+    return SizedBox(
+      width: 120,
+      height: 33,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          if (challan != null) {
+            _deleteChallan(challan);
+          }
+        },
+        icon: const Icon(Icons.delete_outline_rounded, size: 15),
+        label: const Text(
+          'Delete Challan',
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xffD32F2F),
+          side: const BorderSide(color: Color(0xffE57373)),
+          backgroundColor: const Color(0xffFFF5F5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+
+  Widget _logButton(PurchaseChallanListModel challan) {
+    return SizedBox(
+      width: 120,
+      height: 33,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          if (challan != null) {
+            _showChallanLogs(challan);
+          }
+        },
+        icon: const Icon(Icons.history_rounded, size: 15),
+        label: const Text(
+          'Challan Logs',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF3267D5),
+          side: const BorderSide(color: Color(0xFF90CAF9)),
+          backgroundColor: const Color(0xFFF3F7FF),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+
+
+
+  // ==========================================================
+  // DETAIL BOX
+  // ==========================================================
+
+  Widget _detailBox(String title, String value, IconData icon) {
+    final displayValue = value.trim().isEmpty ? '-' : value.trim();
 
     return Container(
-      width: 190,
-      constraints: const BoxConstraints(
-        minHeight: 52,
-      ),
-      padding: const EdgeInsets.all(9),
+      width: 156,
+      constraints: const BoxConstraints(minHeight: 42),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-          color: const Color(0xffE0E3E6),
-        ),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xffE0E3E6)),
       ),
       child: Row(
         children: [
           Container(
-            width: 27,
-            height: 27,
+            width: 25,
+            height: 25,
             decoration: BoxDecoration(
               color: const Color(0xffF0F2F4),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(5),
             ),
-            child: Icon(
-              icon,
-              size: 14,
-              color: const Color(0xff666C72),
-            ),
+            child: Icon(icon, size: 13, color: const Color(0xff666C72)),
           ),
-
-          const SizedBox(width: 7),
-
+          const SizedBox(width: 6),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
-              mainAxisAlignment:
-              MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 8,
+                    fontSize: 7.5,
                     fontWeight: FontWeight.w700,
                     color: Color(0xff969BA1),
                   ),
                 ),
-
-                const SizedBox(height: 3),
-
+                const SizedBox(height: 2),
                 Text(
                   displayValue,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w700,
                     color: Color(0xff3E4348),
                   ),
@@ -1270,27 +1656,20 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// SECTION TITLE
-// ==========================================================
+  // ==========================================================
+  // SECTION TITLE
+  // ==========================================================
 
-  Widget _sectionTitle(
-      IconData icon,
-      String title,
-      ) {
+  Widget _sectionTitle(IconData icon, String title) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 15,
-          color: const Color(0xff5F656B),
-        ),
-        const SizedBox(width: 6),
+        Icon(icon, size: 14, color: const Color(0xff5F656B)),
+        const SizedBox(width: 5),
         Text(
           title,
           style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
             color: Color(0xff4A4F55),
           ),
         ),
@@ -1298,55 +1677,42 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// AMOUNT BOX
-// ==========================================================
+  // ==========================================================
+  // AMOUNT BOX
+  // ==========================================================
 
-  Widget _amountBox(
-      String title,
-      double value, {
-        bool isDiscount = false,
-      }) {
+  Widget _amountBox(String title, double value, {bool isDiscount = false}) {
     return Container(
-      width: 145,
-      height: 52,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 7,
-      ),
+      width: 135,
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-          color: const Color(0xffE0E3E6),
-        ),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xffE0E3E6)),
       ),
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
-        mainAxisAlignment:
-        MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 8,
+              fontSize: 7.5,
               fontWeight: FontWeight.w600,
               color: Color(0xff92979D),
             ),
           ),
-
-          const SizedBox(height: 3),
-
+          const SizedBox(height: 2),
           Text(
             '${isDiscount ? '-' : ''}${_money(value)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
               color: isDiscount
                   ? const Color(0xffA85B5B)
                   : const Color(0xff3D4247),
@@ -1357,56 +1723,44 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// GRAND TOTAL BOX
-// ==========================================================
+  // ==========================================================
+  // GRAND TOTAL BOX
+  // ==========================================================
 
   Widget _grandTotalBox(double value) {
     return Container(
-      width: 170,
-      height: 52,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-      ),
+      width: 155,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
         color: themeColor,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.payments_outlined,
-            size: 18,
-            color: Colors.white70,
-          ),
-
-          const SizedBox(width: 7),
-
+          const Icon(Icons.payments_outlined, size: 17, color: Colors.white70),
+          const SizedBox(width: 6),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
-              mainAxisAlignment:
-              MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
                   'GRAND TOTAL',
                   style: TextStyle(
-                    fontSize: 7.5,
+                    fontSize: 7,
                     fontWeight: FontWeight.w700,
                     color: Colors.white60,
                   ),
                 ),
-
                 const SizedBox(height: 2),
-
                 Text(
                   _money(value),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
@@ -1418,46 +1772,43 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// DATE INFO
-// ==========================================================
+  // ==========================================================
+  // DATE INFO
+  // ==========================================================
 
-  Widget _dateInfo(
-      String title,
-      String value,
-      ) {
+  Widget _dateInfo(String title, String value) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(
-          Icons.schedule_outlined,
-          size: 12,
-          color: Color(0xff999EA4),
-        ),
-        const SizedBox(width: 5),
+        const Icon(Icons.schedule_outlined, size: 11, color: Color(0xff999EA4)),
+        const SizedBox(width: 4),
         Text(
           '$title: ',
           style: const TextStyle(
-            fontSize: 8.5,
+            fontSize: 8,
             fontWeight: FontWeight.w700,
             color: Color(0xff92979D),
           ),
         ),
-        Text(
-          value.isEmpty ? '-' : value,
-          style: const TextStyle(
-            fontSize: 8.5,
-            fontWeight: FontWeight.w600,
-            color: Color(0xff656A70),
+        Flexible(
+          child: Text(
+            value.isEmpty ? '-' : value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+              color: Color(0xff656A70),
+            ),
           ),
         ),
       ],
     );
   }
 
-// ==========================================================
-// TOGGLE EXPAND
-// ==========================================================
+  // ==========================================================
+  // TOGGLE EXPAND
+  // ==========================================================
 
   void _toggleExpanded(String id) {
     setState(() {
@@ -1469,85 +1820,115 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     });
   }
 
-// ==========================================================
-// CREATE NEW
-// ==========================================================
+  // ==========================================================
+  // CREATE NEW
+  // ==========================================================
 
   void _createNewChallan() {
+    widget.routesController.setRoute(Routes.purchaseChallanPage);
+  }
+
+  // ==========================================================
+  // VIEW
+  // ==========================================================
+
+  Future<PurchaseChallanDetails?> getPreviousData(String id)async {
+    Map<String, dynamic> requestBody = {};
+    requestBody['id'] = id;
+
+    var response = await ApiProvider.createServerRequest(
+      apiUrl: ApiPath.purchaseChallansDetailApi,
+      requestBody: requestBody,
+      isFormData: true,
+    );
+
+    if (response['status'] != null && response['status']) {
+      try {
+
+        PurchaseChallanDetails purchaseChallanDetails = PurchaseChallanDetails.fromJson(response['data']);
+
+
+        return purchaseChallanDetails;
+      } catch (e) {
+        print(e);
+      }
+    }
+    return null;
+  }
+
+
+  Future<void> _openChallan(PurchaseChallanListModel challan) async {
+    final challanDetails = await getPreviousData(challan.id);
+
+    if (!mounted || challanDetails == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(20),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: SizedBox(
+            width: 1200,
+            height: MediaQuery.of(context).size.height * 0.9,
+            child: PurchaseChallanDetailsScreen(
+              challan: challanDetails,
+              title: 'Purchase Challan',
+            ),
+          ),
+        );
+      },
+    );
+  }
+  // ==========================================================
+  // EDIT
+  // ==========================================================
+
+  Future<void> openChallanPdf(PurchaseChallanListModel challan) async {
+    final challanDetails = await getPreviousData(challan.id);
+
+    if (!mounted || challanDetails == null) return;
+
+    final pdfBytes = await PurchaseChallanPdfService().buildChallanPdf(
+      challanDetails,
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (_) async => pdfBytes,
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (_) async => pdfBytes,
+    );
+  }
+
+  void _editChallan(PurchaseChallanListModel challan) {
     widget.routesController.setRoute(
-      "/purchasePage",
+      Routes.purchaseChallanPage,
+      data: {'id': challan.id},
     );
   }
 
-// ==========================================================
-// VIEW
-// ==========================================================
+  // ==========================================================
+  // PRINT
+  // ==========================================================
 
-  void _openChallan(
-      PurchaseChallanListModel challan,
-      ) {
+  void _printChallan(PurchaseChallanListModel challan) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'View challan #${challan.challanNo}',
-        ),
-        duration: const Duration(
-          milliseconds: 900,
-        ),
+        content: Text('Print challan #${challan.challanNo}'),
+        duration: const Duration(milliseconds: 900),
       ),
     );
-
-// TODO:
-// Open challan details page.
   }
 
-// ==========================================================
-// EDIT
-// ==========================================================
-
-  void _editChallan(
-      PurchaseChallanListModel challan,
-      ) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Edit challan #${challan.challanNo}',
-        ),
-        duration: const Duration(
-          milliseconds: 900,
-        ),
-      ),
-    );
-
-// TODO:
-// Navigate to edit purchase challan.
-  }
-
-// ==========================================================
-// PRINT
-// ==========================================================
-
-  void _printChallan(
-      PurchaseChallanListModel challan,
-      ) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Print challan #${challan.challanNo}',
-        ),
-        duration: const Duration(
-          milliseconds: 900,
-        ),
-      ),
-    );
-
-// TODO:
-// Add PDF / print logic.
-  }
-
-// ==========================================================
-// DATE FORMAT
-// ==========================================================
+  // ==========================================================
+  // DATE FORMAT
+  // ==========================================================
 
   String _formatDate(String value) {
     if (value.trim().isEmpty) {
@@ -1561,87 +1942,71 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     return value;
   }
 
-// ==========================================================
-// MONEY
-// ==========================================================
+  // ==========================================================
+  // MONEY
+  // ==========================================================
 
   String _money(double value) {
     return '₹${value.toStringAsFixed(2)}';
   }
 
-// ==========================================================
-// ERROR
-// ==========================================================
+  // ==========================================================
+  // ERROR
+  // ==========================================================
 
   Widget _buildError() {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(
-          maxWidth: 360,
-        ),
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(maxWidth: 340),
+        margin: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xffE1E4E8),
-          ),
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: const Color(0xffE1E4E8)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: const Color(0xffFDECEC),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.cloud_off_rounded,
                 color: Color(0xffD33A3A),
-                size: 25,
+                size: 23,
               ),
             ),
-
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 10),
             const Text(
               'Unable to load challans',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
                 color: Color(0xff25282C),
               ),
             ),
-
-            const SizedBox(height: 5),
-
+            const SizedBox(height: 4),
             Text(
               controller.errorMessage ?? '',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 11,
-                height: 1.4,
+                fontSize: 10.5,
+                height: 1.35,
                 color: Color(0xff777C82),
               ),
             ),
-
-            const SizedBox(height: 14),
-
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: controller.getAllChallans,
-              icon: const Icon(
-                Icons.refresh_rounded,
-                size: 16,
-              ),
+              icon: const Icon(Icons.refresh_rounded, size: 15),
               label: const Text(
                 'Try Again',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -1650,9 +2015,9 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 
-// ==========================================================
-// EMPTY
-// ==========================================================
+  // ==========================================================
+  // EMPTY
+  // ==========================================================
 
   Widget _buildEmpty() {
     final isSearching = searchText.isNotEmpty;
@@ -1662,76 +2027,57 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 54,
+            height: 54,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: const Color(0xffE0E3E7),
-              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xffE0E3E7)),
             ),
             child: Icon(
               isSearching
                   ? Icons.search_off_rounded
                   : Icons.receipt_long_outlined,
-              size: 27,
+              size: 25,
               color: const Color(0xff70757B),
             ),
           ),
-
-          const SizedBox(height: 12),
-
+          const SizedBox(height: 10),
           Text(
-            isSearching
-                ? 'No challans found'
-                : 'No purchase challans',
+            isSearching ? 'No challans found' : 'No purchase challans',
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
               color: Color(0xff25282C),
             ),
           ),
-
-          const SizedBox(height: 5),
-
+          const SizedBox(height: 4),
           Text(
             isSearching
                 ? 'Try another search keyword.'
                 : 'Purchase challans will appear here.',
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xff777C82),
-            ),
+            style: const TextStyle(fontSize: 10.5, color: Color(0xff777C82)),
           ),
-
           if (!isSearching) ...[
-            const SizedBox(height: 14),
-
+            const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _createNewChallan,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff17191C),
+                backgroundColor: themeColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 10,
+                  horizontal: 12,
+                  vertical: 9,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(7),
                 ),
               ),
-              icon: const Icon(
-                Icons.add_rounded,
-                size: 16,
-              ),
+              icon: const Icon(Icons.add_rounded, size: 15),
               label: const Text(
                 'Create Challan',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -1740,4 +2086,3 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
     );
   }
 }
-

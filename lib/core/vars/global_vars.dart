@@ -1,5 +1,8 @@
 
+import '../../features/dashboard/model/store_model.dart';
+import '../../features/purchase_challan/model/party_model.dart';
 import '../../features/purchase_challan/model/store_model.dart';
+import '../../features/purchase_challan/model/supplier_model.dart';
 
 class GlobalVars{
   static bool fromDrawer=false;
@@ -16,8 +19,9 @@ class GlobalVars{
   static String placeOfSupply = '';
   static String placeOfSupplyId = '';
   static String currentData = '';
-  static String localIp = '192.168.1.17';
+  static String localIp = '192.168.31.65';
   static String totalTask = "0";
   static String globalRoutes = '';
-  static bool isOffline = true;
+  static bool isOffline = false;
+  static List<CategoryMargin> supplierCatMargin = [];
 }

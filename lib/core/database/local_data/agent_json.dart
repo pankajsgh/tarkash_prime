@@ -1,45 +1,24 @@
-var agentJson =
-{
+var agentJson = {
   "code": 1,
   "error": true,
-  "nums": "10",
-  "TotalData": "10",
-  "msg": "Agent List",
+  "nums": "12",
+  "TotalData": "12",
+  "msg": "Agent list fetched successfully",
   "AgentList": [
-    {
-      "id": "1",
-      "Agent": "Rajesh Kumar",
-      "ShortName": "RK"
-    },
     {
       "id": "2",
       "Agent": "Amit Sharma",
       "ShortName": "AS"
     },
     {
-      "id": "3",
-      "Agent": "Vikas Gupta",
-      "ShortName": "VG"
+      "id": "10",
+      "Agent": "Anil Mehta",
+      "ShortName": "AM"
     },
     {
-      "id": "4",
-      "Agent": "Sanjay Agarwal",
-      "ShortName": "SA"
-    },
-    {
-      "id": "5",
-      "Agent": "Manish Jain",
-      "ShortName": "MJ"
-    },
-    {
-      "id": "6",
-      "Agent": "Pankaj Verma",
-      "ShortName": "PV"
-    },
-    {
-      "id": "7",
-      "Agent": "Rohit Bansal",
-      "ShortName": "RB"
+      "id": "12",
+      "Agent": "Arvind Rajgeer",
+      "ShortName": "AM"
     },
     {
       "id": "8",
@@ -47,14 +26,44 @@ var agentJson =
       "ShortName": "DM"
     },
     {
+      "id": "5",
+      "Agent": "Manish Jain",
+      "ShortName": "MJ"
+    },
+    {
       "id": "9",
       "Agent": "Nitin Singhal",
       "ShortName": "NS"
     },
     {
-      "id": "10",
-      "Agent": "Anil Mehta",
+      "id": "6",
+      "Agent": "Pankaj Verma",
+      "ShortName": "PV"
+    },
+    {
+      "id": "1",
+      "Agent": "Rajesh Kumar",
+      "ShortName": "RK"
+    },
+    {
+      "id": "11",
+      "Agent": "Rajesh Mehta",
       "ShortName": "AM"
+    },
+    {
+      "id": "7",
+      "Agent": "Rohit Bansal",
+      "ShortName": "RB"
+    },
+    {
+      "id": "4",
+      "Agent": "Sanjay Agarwal",
+      "ShortName": "SA"
+    },
+    {
+      "id": "3",
+      "Agent": "Vikas Gupta",
+      "ShortName": "VG"
     }
   ]
 };

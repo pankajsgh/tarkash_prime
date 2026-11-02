@@ -3,6 +3,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../vars/global_vars.dart';
+import 'local_repository.dart';
+
 class ApiProvider {
 
   static void printLog(dynamic message) {
@@ -14,11 +17,18 @@ class ApiProvider {
 
   static Dio dio = Dio()..options.connectTimeout = const Duration(seconds: 10);
 
+
   static Future<Map<String, dynamic>> createServerRequest({required String apiUrl, Map<String, dynamic>? requestBody, isFormData = false}) async{
     Map<String, dynamic> responseData = {};
     Response response;
 
     printLog('apiDebugReq, $apiUrl, $requestBody, $isFormData');
+
+    if(GlobalVars.isOffline)
+    {
+     responseData = await LocalProvider.createLocalRequest(apiUrl: apiUrl, requestBody: requestBody);
+
+    }
 
     if(requestBody!=null){
       try{
@@ -37,8 +47,11 @@ class ApiProvider {
 
     }
     else{
+      print("this is good");
       try{
         response = await dio.get(apiUrl);
+        print("this is good");
+        print(response);
       } catch(e){
         response = Response(requestOptions: RequestOptions());
       }

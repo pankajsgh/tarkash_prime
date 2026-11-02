@@ -6,30 +6,33 @@ import 'package:calculation_panel/features/purchase_challan/representaion/suppli
 import 'package:calculation_panel/features/purchase_challan/representaion/supplier_header/supplier_dropdown.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/widget/series_field.dart';
+import '../../../dashboard/model/store_model.dart';
+import '../../model/party_model.dart';
 import '../../model/store_model.dart';
 import '../../model/transport_model.dart';
 import '../../controller/purchase_controller.dart';
-import 'model/supplier_model.dart';
+import '../../model/supplier_model.dart';
 
 class SupplierHeader extends StatefulWidget {
   final PurchaseController purchaseController;
+  final bool isEditMode;
 
   const SupplierHeader({
     super.key,
     required this.purchaseController,
+    required this.isEditMode,
   });
 
   @override
-  State<SupplierHeader> createState() =>
-      _SupplierHeaderState();
+  State<SupplierHeader> createState() => _SupplierHeaderState();
 }
 
 class _SupplierHeaderState extends State<SupplierHeader> {
   late final SupplierController controller;
 
-  static const double fieldWidth = 240;
+  static const double fieldWidth = 230;
   static const double dateFieldWidth = 160;
-
   static const double fieldHeight = 36;
 
   @override
@@ -38,38 +41,23 @@ class _SupplierHeaderState extends State<SupplierHeader> {
 
     controller = SupplierController();
     controller.dateController.text = formatDate(DateTime.now());
+
     widget.purchaseController.setData(controller.dateController.text);
     GlobalVars.currentData = controller.dateController.text;
 
-    Future.delayed(
-      const Duration(milliseconds: 500),
-          () {
-        if (!mounted) return;
-
-        controller.getPartyTypeList('');
-      },
-    );
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      controller.getPartyTypeList('');
+    });
   }
-
-  // ===========================================================================
-  // SUPPLIER
-  // ===========================================================================
 
   void _selectSupplier(Party? supplier) {
+    if (widget.purchaseController.selectedAgent == null) {
+      widget.purchaseController.setAgent(supplier?.agency);
+    }
 
-    widget.purchaseController.setAgent(
-      supplier?.agency,
-    );
-    controller.gstinController.text= supplier!=null? supplier.gstNo: '';
-
-    widget.purchaseController.setSupplier(
-      supplier,
-    );
+    widget.purchaseController.setSupplier(supplier);
   }
-
-  // ===========================================================================
-  // INPUT DECORATION
-  // ===========================================================================
 
   InputDecoration _inputDecoration(
       String hint, {
@@ -77,9 +65,7 @@ class _SupplierHeaderState extends State<SupplierHeader> {
       }) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(
-        color: borderColor,
-      ),
+      borderSide: const BorderSide(color: borderColor),
     );
 
     return InputDecoration(
@@ -114,16 +100,17 @@ class _SupplierHeaderState extends State<SupplierHeader> {
     );
   }
 
-  // ===========================================================================
-  // TEXT FIELD
-  // ===========================================================================
-
   Widget _textField(
-      TextEditingController textController, {required String hint, IconData? prefix,}) {
+      TextEditingController textController, {
+        required String hint,
+        IconData? prefix,
+        bool isEnable = true,
+      }) {
     return SizedBox(
       width: fieldWidth,
       height: fieldHeight,
       child: TextField(
+        enabled: isEnable,
         controller: textController,
         style: const TextStyle(
           fontSize: 12,
@@ -133,9 +120,11 @@ class _SupplierHeaderState extends State<SupplierHeader> {
           hint,
           prefix: prefix,
         ),
-        onChanged: (String? value){
-          widget.purchaseController.setChallanNo(controller.challanController.text, controller.gstinController.text);
-
+        onChanged: (value) {
+          widget.purchaseController.setChallanNo(
+            controller.challanController.text,
+            value,
+          );
         },
       ),
     );
@@ -144,25 +133,25 @@ class _SupplierHeaderState extends State<SupplierHeader> {
   DateTime? _parseDate(String value) {
     final parts = value.split('/');
 
-    if (parts.length != 3) {
-      return null;
-    }
+    if (parts.length != 3) return null;
 
     final day = int.tryParse(parts[0]);
-
     final month = int.tryParse(parts[1]);
-
     final year = int.tryParse(parts[2]);
 
     if (day == null || month == null || year == null) {
       return null;
     }
 
-    try {
-      return DateTime(year, month, day);
-    } catch (_) {
+    final date = DateTime(year, month, day);
+
+    if (date.year != year ||
+        date.month != month ||
+        date.day != day) {
       return null;
     }
+
+    return date;
   }
 
   Future<void> selectDate(BuildContext context) async {
@@ -185,18 +174,14 @@ class _SupplierHeaderState extends State<SupplierHeader> {
       },
     );
 
-    if (result == null) return;
-    String selectedDate = formatDate(result);
+    if (result == null || !mounted) return;
+
+    final selectedDate = formatDate(result);
+
     controller.setDate(selectedDate);
     widget.purchaseController.setData(selectedDate);
     GlobalVars.currentData = selectedDate;
-    widget.purchaseController.setData(selectedDate);
   }
-
-
-  // ===========================================================================
-  // DATE
-  // ===========================================================================
 
   Widget _dateField() {
     return SizedBox(
@@ -205,9 +190,7 @@ class _SupplierHeaderState extends State<SupplierHeader> {
       child: TextField(
         controller: controller.dateController,
         readOnly: true,
-        onTap: () {
-          selectDate(context);
-        },
+        onTap: () => selectDate(context),
         style: const TextStyle(
           fontSize: 12,
           color: textDark,
@@ -219,10 +202,6 @@ class _SupplierHeaderState extends State<SupplierHeader> {
       ),
     );
   }
-
-  // ===========================================================================
-  // STORE
-  // ===========================================================================
 
   Widget _storeField() {
     return SizedBox(
@@ -238,11 +217,8 @@ class _SupplierHeaderState extends State<SupplierHeader> {
             borderRadius: 8,
             items: controller.stores,
             onSearch: (value) {},
-            displayString: (item) {
-              return item.store ?? '';
-            },
+            displayString: (item) => item.store ?? '',
             onSelect: (value) {
-              // controller.setStore(value);
               widget.purchaseController.setStore(value);
             },
           );
@@ -250,10 +226,6 @@ class _SupplierHeaderState extends State<SupplierHeader> {
       ),
     );
   }
-
-  // ===========================================================================
-  // TRANSPORT
-  // ===========================================================================
 
   Widget _transportField() {
     return SizedBox(
@@ -269,9 +241,7 @@ class _SupplierHeaderState extends State<SupplierHeader> {
             borderRadius: 8,
             items: controller.transports,
             onSearch: (value) {},
-            displayString: (item) {
-              return item.transport ?? '';
-            },
+            displayString: (item) => item.transport ?? '',
             onSelect: (value) {
               widget.purchaseController.setTransport(value);
             },
@@ -281,9 +251,6 @@ class _SupplierHeaderState extends State<SupplierHeader> {
     );
   }
 
-  // ===========================================================================
-  // SUPPLIER
-  // ===========================================================================
 
   Widget _supplierField() {
     return SizedBox(
@@ -292,6 +259,12 @@ class _SupplierHeaderState extends State<SupplierHeader> {
       child: ListenableBuilder(
         listenable: controller,
         builder: (context, _) {
+          if (widget.isEditMode) {
+            return SupplierDisplayDropdown(
+              selectedSupplier: widget.purchaseController.selectSupplier,
+            );
+          }
+
           return SupplierDropdown(
             suppliers: controller.suppliers,
             selectedSupplier: widget.purchaseController.selectSupplier,
@@ -305,14 +278,9 @@ class _SupplierHeaderState extends State<SupplierHeader> {
     );
   }
 
-  // ===========================================================================
-  // FIELD BLOCK
-  // ===========================================================================
-
   Widget _fieldBlock(String label, Widget field) {
     return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           height: 17,
@@ -327,16 +295,41 @@ class _SupplierHeaderState extends State<SupplierHeader> {
             ),
           ),
         ),
-
         const SizedBox(height: 6),
-        field
+        field,
       ],
     );
   }
 
-  // ===========================================================================
-  // FORM
-  // ===========================================================================
+  Widget _seriesField() {
+    if(widget.isEditMode)
+      {
+        return SizedBox(
+          width: 160,
+          child: _fieldBlock(
+            'Reference Number',
+            _textField(
+              TextEditingController(text: widget.purchaseController.referenceNo),
+              isEnable: !widget.isEditMode,
+              hint: '',
+              prefix: Icons.numbers_rounded,
+            ),
+          )
+        );
+      }
+    return SizedBox(
+      width: 160,
+      child: SeriesField(
+        seriesId: '2',
+        controller: SeriesController(
+          initialSeries: widget.purchaseController.selectedSeries,
+        ),
+        onSelected: (Series? series) {
+          widget.purchaseController.setSeries(series);
+        },
+      ),
+    );
+  }
 
   Widget _buildFormField(int index) {
     switch (index) {
@@ -347,38 +340,44 @@ class _SupplierHeaderState extends State<SupplierHeader> {
         );
 
       case 1:
+        return _seriesField();
+
+      case 2:
         return _fieldBlock(
           'GSTIN Number',
           _textField(
-            controller.gstinController,
+            TextEditingController(
+              text: widget.purchaseController.gstNo,
+            ),
             hint: 'Enter GSTIN number',
             prefix: Icons.badge_outlined,
           ),
         );
 
-      case 2:
+      case 3:
         return _fieldBlock(
           'Store',
           _storeField(),
         );
 
-      case 3:
+      case 4:
         return _fieldBlock(
           'Challan Number',
           _textField(
             controller.challanController,
+            isEnable: !widget.isEditMode,
             hint: 'Enter challan number',
             prefix: Icons.numbers_rounded,
           ),
         );
 
-      case 4:
+      case 5:
         return _fieldBlock(
           'Date',
           _dateField(),
         );
 
-      case 5:
+      case 6:
         return _fieldBlock(
           'Transport',
           _transportField(),
@@ -389,19 +388,22 @@ class _SupplierHeaderState extends State<SupplierHeader> {
     }
   }
 
-  // ===========================================================================
-  // BUILD
-  // ===========================================================================
-
   @override
   void didUpdateWidget(covariant SupplierHeader oldWidget) {
     super.didUpdateWidget(oldWidget);
-    controller.challanController.text = widget.purchaseController.challanNo;
+
+    controller.challanController.text =
+        widget.purchaseController.challanNo;
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -423,7 +425,7 @@ class _SupplierHeaderState extends State<SupplierHeader> {
         spacing: 15,
         runSpacing: 12,
         children: List.generate(
-          6,
+          7,
           _buildFormField,
         ),
       ),

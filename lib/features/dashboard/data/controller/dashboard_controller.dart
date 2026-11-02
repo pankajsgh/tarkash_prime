@@ -1,12 +1,10 @@
-import 'package:calculation_panel/core/database/local_data/store_json.dart';
 import 'package:calculation_panel/core/vars/global_vars.dart';
 import 'package:flutter/material.dart';
-
 import '../../../../core/network/api_path.dart';
 import '../../../../core/network/api_repository.dart';
 import '../../../../core/ulitls/utility.dart';
-import '../../../purchase_challan/model/dashboard_model.dart';
 import '../../../purchase_challan/model/store_model.dart';
+import '../../model/dashboard_model.dart';
 
 class DashboardController extends ChangeNotifier {
   // ============================================================
@@ -68,10 +66,6 @@ class DashboardController extends ChangeNotifier {
     requestBody['uid'] = GlobalVars.userId;
     requestBody['search'] = '';
     var response = await ApiProvider.createServerRequest(apiUrl: ApiPath.getStoreList, requestBody: requestBody, isFormData: true);
-    if(GlobalVars.isOffline)
-    {
-      response = storeJson;
-    }
 
     if(response['error']!=null && response['error'])
     {

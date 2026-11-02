@@ -1,290 +1,172 @@
-
-import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 
-import '../../main.dart';
-import '../theme/colors.dart';
-
-enum ToastType {
-  success,
-  error,
-  warning,
-  info,
-}
+enum ToastType { success, error, warning, info }
 
 class Toast {
-  static OverlayEntry? _currentToast;
+  Toast._();
+
+  static final GlobalKey<NavigatorState> navigatorKey =
+  GlobalKey<NavigatorState>();
+
+  static OverlayEntry? _entry;
+  static Timer? _timer;
+
+  static void success(String message) =>
+      show(message: message, type: ToastType.success, title: 'Success');
+
+  static void error(String message) =>
+      show(message: message, type: ToastType.error, title: 'Error');
+
+  static void warning(String message) =>
+      show(message: message, type: ToastType.warning, title: 'Warning');
+
+  static void info(String message) =>
+      show(message: message, type: ToastType.info, title: 'Info');
 
   static void show({
-    String? title,
     required String message,
     ToastType type = ToastType.info,
-    Duration duration = const Duration(seconds: 3),
+    String? title,
   }) {
-    final overlayState = navigatorKey.currentState?.overlay;
+    final overlay = navigatorKey.currentState?.overlay;
 
-    if (overlayState == null) {
-      debugPrint('Overlay not found');
+    if (overlay == null) {
+      debugPrint('Toast: Navigator overlay is not ready.');
       return;
     }
 
-    _currentToast?.remove();
+    _timer?.cancel();
+    _entry?.remove();
+    _entry = null;
 
-    final config = _getToastConfig(type);
+    final color = switch (type) {
+      ToastType.success => const Color(0xFF16A34A),
+      ToastType.error => const Color(0xFFDC2626),
+      ToastType.warning => const Color(0xFFD97706),
+      ToastType.info => const Color(0xFF2563EB),
+    };
 
-    final entry = OverlayEntry(
-      builder: (_) => _AnimatedToast(
-        title: title,
+    final backgroundColor = switch (type) {
+      ToastType.success => const Color(0xFFDCFCE7),
+      ToastType.error => const Color(0xFFFEE2E2),
+      ToastType.warning => const Color(0xFFFEF3C7),
+      ToastType.info => const Color(0xFFDBEAFE),
+    };
+
+    final icon = switch (type) {
+      ToastType.success => Icons.check_circle,
+      ToastType.error => Icons.error,
+      ToastType.warning => Icons.warning,
+      ToastType.info => Icons.info,
+    };
+
+    late final OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (_) => _ToastView(
         message: message,
-        icon: config.icon,
-        color: config.color,
+        title: title,
+        color: color,
+        backgroundColor: backgroundColor,
+        icon: icon,
+        onClose: () => _remove(entry),
       ),
     );
 
-    _currentToast = entry;
+    _entry = entry;
+    overlay.insert(entry);
 
-    overlayState.insert(entry);
-
-    Future.delayed(duration, () {
-      if (_currentToast == entry) {
-        entry.remove();
-        _currentToast = null;
-      }
-    });
+    _timer = Timer(
+      const Duration(seconds: 3),
+          () => _remove(entry),
+    );
   }
 
-  static _ToastConfig _getToastConfig(ToastType type) {
-    switch (type) {
-      case ToastType.success:
-        return _ToastConfig(
-          color: Color(0xFF22C55E),
-          icon: Icons.check_circle_rounded,
-        );
+  static void _remove(OverlayEntry entry) {
+    if (entry.mounted) entry.remove();
 
-      case ToastType.error:
-        return _ToastConfig(
-          color: Color(0xFFEF4444),
-          icon: Icons.cancel_rounded,
-        );
-
-      case ToastType.warning:
-        return _ToastConfig(
-          color: Color(0xFFF59E0B),
-          icon: Icons.warning_amber_rounded,
-        );
-
-      case ToastType.info:
-        return _ToastConfig(
-          color: Color(0xFF3B82F6),
-          icon: Icons.info_rounded,
-        );
+    if (identical(_entry, entry)) {
+      _entry = null;
+      _timer?.cancel();
+      _timer = null;
     }
   }
-}
-class _ToastConfig {
-  final Color color;
-  final IconData icon;
 
-  _ToastConfig({
-    required this.color,
-    required this.icon,
-  });
+  static void dismiss() {
+    final entry = _entry;
+    if (entry != null) _remove(entry);
+  }
 }
 
-class _AnimatedToast extends StatefulWidget {
-  final String? title;
+class _ToastView extends StatelessWidget {
   final String message;
+  final String? title;
   final Color color;
+  final Color backgroundColor;
   final IconData icon;
+  final VoidCallback onClose;
 
-  const _AnimatedToast({
-    super.key,
-    this.title,
+  const _ToastView({
     required this.message,
+    required this.title,
     required this.color,
+    required this.backgroundColor,
     required this.icon,
+    required this.onClose,
   });
-
-
-  @override
-  State<_AnimatedToast> createState() => _AnimatedToastState();
-}
-
-class _AnimatedToastState extends State<_AnimatedToast>
-    with TickerProviderStateMixin {
-  late AnimationController controller;
-
-  late Animation<double> fadeAnimation;
-  late Animation<double> scaleAnimation;
-  late Animation<Offset> slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 450),
-    );
-
-    fadeAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOut,
-      ),
-    );
-
-    scaleAnimation = Tween<double>(
-      begin: .85,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOutBack,
-      ),
-    );
-
-    slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -.4),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
-    controller.forward();
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 12,
-      left: 24,
-      right: 24,
+      left: 12,
+      right: 12,
+      bottom: MediaQuery.of(context).padding.bottom + 16,
       child: Material(
-        color: Colors.transparent,
-        child: SlideTransition(
-          position: slideAnimation,
-          child: ScaleTransition(
-            scale: scaleAnimation,
-            child: FadeTransition(
-              opacity: fadeAnimation,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(36),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: 20,
-                    sigmaY: 20,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6.0,
-                      vertical: 4.0,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(.72),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: primaryAppColor.withValues(alpha: 0.5),
-                        width: 1.2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: widget.color.withOpacity(.18),
-                          blurRadius: 35,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 12),
+        color: backgroundColor,
+        elevation: 4,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 21),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (title != null)
+                      Text(
+                        title!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: color,
                         ),
-                      ],
-                    ),
-                    child: IntrinsicHeight(
-                      child: Row(
-                        children: [
-
-                          // /// Glow Strip
-                          // Container(
-                          //   width: 2.5,
-                          //   decoration: BoxDecoration(
-                          //     color: widget.color,
-                          //     borderRadius: BorderRadius.circular(100),
-                          //     boxShadow: [
-                          //       BoxShadow(
-                          //         color: widget.color.withOpacity(.5),
-                          //         blurRadius: 10,
-                          //       ),
-                          //     ],
-                          //   ),
-                          // ),
-
-                          const SizedBox(width: 14),
-
-                          /// Icon
-                          Container(
-                            height: 38,
-                            width: 38,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: widget.color.withOpacity(.12),
-                            ),
-                            child: Icon(
-                              widget.icon,
-                              color: widget.color,
-                              size: 20,
-                            ),
-                          ),
-
-                          const SizedBox(width: 14),
-
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-
-                                if (widget.title != null &&
-                                    widget.title!.trim().isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Text(
-                                      widget.title!,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xff111827),
-                                      ),
-                                    ),
-                                  ),
-
-                                Text(
-                                  widget.message,
-                                  style: const TextStyle(
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.25,
-                                    color: Color(0xff374151),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      ),
+                    Text(
+                      message,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF222222),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ),
+              GestureDetector(
+                onTap: onClose,
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.close, size: 17),
+                ),
+              ),
+            ],
           ),
         ),
       ),

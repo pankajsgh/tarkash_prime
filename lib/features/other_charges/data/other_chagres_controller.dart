@@ -205,22 +205,6 @@ class OtherChargeController extends ChangeNotifier {
     try {
       final query = search.trim();
 
-      if (GlobalVars.isOffline) {
-        final data = await ExtraChargeDatabase.instance.search(query);
-        final charges = data
-            .map(
-              (item) =>
-                  OtherChargeModel.fromJson(Map<String, dynamic>.from(item)),
-            )
-            .toList();
-
-        allCharges = charges;
-
-        updateCharges.update();
-
-        return charges;
-      }
-
       final responseData = await ApiProvider.createServerRequest(
         apiUrl: ApiPath.searchOtherCharges,
         requestBody: {'search': query},
@@ -429,35 +413,6 @@ class OtherChargeController extends ChangeNotifier {
       debugPrint(formData.toString());
 
       // -----------------------------------------------------------------------
-      // OFFLINE DATABASE
-      // -----------------------------------------------------------------------
-
-      if (GlobalVars.isOffline) {
-        int chargeId;
-
-        if (isEditMode) {
-          chargeId = await ExtraChargeDatabase.instance.update(
-            int.parse(id!),
-            formData,
-          );
-        } else {
-          chargeId = await ExtraChargeDatabase.instance.insert(
-            formData,
-          );
-        }
-
-        debugPrint('Other charge saved. ID: $chargeId');
-
-        resetForm();
-
-        if (context.mounted) {
-          Navigator.pop(context, true);
-        }
-
-        return true;
-      }
-
-      // -----------------------------------------------------------------------
       // API
       // -----------------------------------------------------------------------
 
@@ -541,19 +496,6 @@ class OtherChargeController extends ChangeNotifier {
     updateCharges.update();
 
     try {
-      // -----------------------------------------------------------------------
-      // OFFLINE DATABASE
-      // -----------------------------------------------------------------------
-
-      if (GlobalVars.isOffline) {
-        final deletedId = await ExtraChargeDatabase.instance.delete(
-          int.parse(chargeId),
-        );
-
-        debugPrint('Other charge deleted. ID: $deletedId');
-
-        return true;
-      }
 
       // -----------------------------------------------------------------------
       // API

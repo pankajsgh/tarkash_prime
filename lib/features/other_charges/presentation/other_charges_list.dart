@@ -1,6 +1,7 @@
 import 'package:calculation_panel/core/theme/colors.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/routes/routes.dart';
 import '../../../core/vars/global_vars.dart';
 import '../data/model/other_charge_model.dart';
 import '../data/other_chagres_controller.dart';
@@ -66,7 +67,7 @@ class _OtherChargeListScreenState extends State<OtherChargeListScreen> {
   void initState() {
     super.initState();
 
-    GlobalVars.globalRoutes = "/otherChargeScreen";
+    GlobalVars.globalRoutes = Routes.otherChargeScreen;
 
     controller = OtherChargeController();
 

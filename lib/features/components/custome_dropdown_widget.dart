@@ -4,6 +4,33 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// External controller used to open and close a dropdown programmatically.
+class SearchableDropdownController {
+  VoidCallback? _openCallback;
+  VoidCallback? _closeCallback;
+
+  void _attach({
+    required VoidCallback onOpen,
+    required VoidCallback onClose,
+  }) {
+    _openCallback = onOpen;
+    _closeCallback = onClose;
+  }
+
+  void _detach() {
+    _openCallback = null;
+    _closeCallback = null;
+  }
+
+  void open() {
+    _openCallback?.call();
+  }
+
+  void close() {
+    _closeCallback?.call();
+  }
+}
+
 class SearchableCustomerDropdown<T> extends StatefulWidget {
   const SearchableCustomerDropdown({
     super.key,
@@ -17,44 +44,34 @@ class SearchableCustomerDropdown<T> extends StatefulWidget {
     this.borderRadius = 4.0,
     this.height = 31,
     this.dataFound = true,
+    this.focusNode,
+    this.openOnFocus = true,
+    this.dropdownController,
   });
 
   final T? value;
-
-  /// Controls whether API data is available.
-  ///
-  /// IMPORTANT:
-  /// Even when this is true, the popup will ONLY show
-  /// when [items] is not empty.
-  final bool dataFound;
-
-  /// Items received from API.
   final List<T> items;
 
-  /// Called when user selects an item.
   final ValueChanged<T?> onSelect;
-
-  /// Called whenever user types.
   final ValueChanged<String> onSearch;
-
-  /// Converts model to text.
   final String Function(T item) displayString;
 
+  final String hint;
   final Color borderColor;
   final double borderRadius;
-  final String hint;
   final double height;
+
+  final bool dataFound;
+  final FocusNode? focusNode;
+  final bool openOnFocus;
+
+  final SearchableDropdownController? dropdownController;
 
   @override
   State<SearchableCustomerDropdown<T>> createState() =>
       _SearchableCustomerDropdownState<T>();
 }
 
-// ============================================================================
-// GLOBAL ACTIVE DROPDOWN MANAGER
-// ============================================================================
-
-/// Only ONE SearchableCustomerDropdown can have an overlay open.
 class _DropdownManager {
   _DropdownManager._();
 
@@ -65,45 +82,40 @@ class _DropdownManager {
   void activate(
       _SearchableCustomerDropdownState<dynamic> dropdown,
       ) {
-    if (_activeDropdown == dropdown) {
-      return;
-    }
+    if (identical(_activeDropdown, dropdown)) return;
 
     final previous = _activeDropdown;
-
     _activeDropdown = dropdown;
 
-// Close previous dropdown.
     previous?._closeFromManager();
   }
 
   void deactivate(
       _SearchableCustomerDropdownState<dynamic> dropdown,
       ) {
-    if (_activeDropdown == dropdown) {
+    if (identical(_activeDropdown, dropdown)) {
       _activeDropdown = null;
     }
   }
 
   void closeActive() {
     final active = _activeDropdown;
-
     _activeDropdown = null;
-
     active?._closeFromManager();
   }
 }
 
-// ============================================================================
-// STATE
-// ============================================================================
-
 class _SearchableCustomerDropdownState<T>
     extends State<SearchableCustomerDropdown<T>> {
   late final TextEditingController _controller;
-  late final FocusNode _focusNode;
+
+  late FocusNode _focusNode;
+  bool _ownsFocusNode = false;
 
   final LayerLink _layerLink = LayerLink();
+
+  /// Attached to the actual field so the popup width matches it exactly.
+  final GlobalKey _fieldKey = GlobalKey();
 
   OverlayEntry? _overlayEntry;
 
@@ -111,12 +123,9 @@ class _SearchableCustomerDropdownState<T>
   late final ValueNotifier<int> _highlightedNotifier;
 
   bool _ignoreTextChange = false;
+  bool _syncScheduled = false;
 
   bool get _isOpen => _overlayEntry != null;
-
-// ==========================================================================
-// INIT
-// ==========================================================================
 
   @override
   void initState() {
@@ -126,7 +135,8 @@ class _SearchableCustomerDropdownState<T>
       text: _getValueText(widget.value),
     );
 
-    _focusNode = FocusNode();
+    _focusNode = widget.focusNode ?? FocusNode();
+    _ownsFocusNode = widget.focusNode == null;
 
     _itemsNotifier = ValueNotifier<List<T>>(
       List<T>.from(widget.items),
@@ -138,23 +148,29 @@ class _SearchableCustomerDropdownState<T>
 
     _focusNode.addListener(_onFocusChanged);
     _controller.addListener(_onTextChanged);
+
+    _attachDropdownController();
   }
 
-// ==========================================================================
-// VALUE TEXT
-// ==========================================================================
-
   String _getValueText(T? value) {
-    if (value == null) {
-      return '';
-    }
-
+    if (value == null) return '';
     return widget.displayString(value);
   }
 
-// ==========================================================================
-// PARENT UPDATE
-// ==========================================================================
+  void _attachDropdownController() {
+    widget.dropdownController?._attach(
+      onOpen: () {
+        if (!mounted) return;
+
+        if (widget.dataFound && _itemsNotifier.value.isNotEmpty) {
+          _openDropdown();
+        } else {
+          widget.onSearch(_controller.text);
+        }
+      },
+      onClose: _closeDropdown,
+    );
+  }
 
   @override
   void didUpdateWidget(
@@ -162,12 +178,32 @@ class _SearchableCustomerDropdownState<T>
       ) {
     super.didUpdateWidget(oldWidget);
 
-// ------------------------------------------------------------------------
-// Selected value changed
-// ------------------------------------------------------------------------
+    if (oldWidget.dropdownController != widget.dropdownController) {
+      oldWidget.dropdownController?._detach();
+      _attachDropdownController();
+    }
+
+    if (oldWidget.focusNode != widget.focusNode) {
+      _focusNode.removeListener(_onFocusChanged);
+
+      if (_ownsFocusNode) {
+        _focusNode.dispose();
+      }
+
+      _focusNode = widget.focusNode ?? FocusNode();
+      _ownsFocusNode = widget.focusNode == null;
+
+      _focusNode.addListener(_onFocusChanged);
+
+      _schedulePostFrame(() {
+        if (_focusNode.hasFocus) {
+          _onFocusChanged();
+        }
+      });
+    }
 
     if (oldWidget.value != widget.value) {
-      final String newText = _getValueText(widget.value);
+      final newText = _getValueText(widget.value);
 
       if (_controller.text != newText) {
         _ignoreTextChange = true;
@@ -183,140 +219,99 @@ class _SearchableCustomerDropdownState<T>
       }
     }
 
-// ------------------------------------------------------------------------
-// dataFound changed
-// ------------------------------------------------------------------------
-
-    if (oldWidget.dataFound != widget.dataFound) {
-      if (!widget.dataFound) {
-// Absolutely no popup when dataFound is false.
-        _closeDropdown();
-      }
+    if (oldWidget.dataFound != widget.dataFound && !widget.dataFound) {
+      _schedulePostFrame(_closeDropdown);
     }
 
-// ------------------------------------------------------------------------
-// API returned new items
-// ------------------------------------------------------------------------
-
-    if (oldWidget.items != widget.items) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-
-        final List<T> newItems = List<T>.from(widget.items);
-
-        _itemsNotifier.value = newItems;
-
-        _highlightedNotifier.value =
-        newItems.isEmpty ? -1 : 0;
-
-// ================================================================
-// IMPORTANT
-//
-// If API returns EMPTY list:
-// NEVER keep the overlay open.
-// NEVER show "No data found".
-// ================================================================
-
-        if (newItems.isEmpty || !widget.dataFound) {
-          _closeDropdown();
-          return;
-        }
-
-// ================================================================
-// API returned data.
-//
-// If field is still focused, open popup automatically.
-// ================================================================
-
-        if (_focusNode.hasFocus && !_isOpen) {
-          _openDropdown(
-            callSearch: false,
-          );
-        }
-      });
-    }
+    _scheduleItemsSync();
   }
 
-// ==========================================================================
-// FOCUS
-// ==========================================================================
+  void _schedulePostFrame(VoidCallback callback) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      callback();
+    });
+  }
+
+  void _scheduleItemsSync() {
+    if (_syncScheduled) return;
+
+    _syncScheduled = true;
+
+    _schedulePostFrame(() {
+      _syncScheduled = false;
+
+      final newItems = List<T>.from(widget.items);
+
+      // Update popup items even when the original list reference is unchanged.
+      _itemsNotifier.value = newItems;
+
+      // Keep the highlighted index valid.
+      final currentIndex = _highlightedNotifier.value;
+
+      if (newItems.isEmpty) {
+        _highlightedNotifier.value = -1;
+        _closeDropdown();
+        return;
+      }
+
+      if (!widget.dataFound) {
+        _closeDropdown();
+        return;
+      }
+
+      if (currentIndex < 0 || currentIndex >= newItems.length) {
+        _highlightedNotifier.value = 0;
+      }
+
+      if (_focusNode.hasFocus && widget.openOnFocus && !_isOpen) {
+        _openDropdown(callSearch: false);
+      } else if (_isOpen) {
+        // Refresh an already-open popup.
+        _overlayEntry?.markNeedsBuild();
+      }
+    });
+  }
 
   void _onFocusChanged() {
     if (_focusNode.hasFocus) {
-// Tell global manager that this dropdown is active.
+      if (!widget.openOnFocus) return;
+
       _DropdownManager.instance.activate(this);
 
-// ----------------------------------------------------------------------
-// NEVER OPEN POPUP WHEN THERE IS NO DATA
-// ----------------------------------------------------------------------
-
       if (widget.dataFound && _itemsNotifier.value.isNotEmpty) {
-        _openDropdown(
-          callSearch: false,
-        );
+        _openDropdown(callSearch: false);
       } else {
-// Keep popup closed.
         _closeDropdown();
-
-// Still trigger API search.
-//
-// This allows:
-// empty list -> API request -> parent receives data
-// -> didUpdateWidget -> popup opens.
         widget.onSearch(_controller.text);
       }
     } else {
-// Focus left field.
       _closeDropdown();
-
       _DropdownManager.instance.deactivate(this);
     }
   }
 
-// ==========================================================================
-// TEXT CHANGE
-// ==========================================================================
-
   void _onTextChanged() {
-    if (_ignoreTextChange) {
-      return;
-    }
-
-// ------------------------------------------------------------------------
-// Always search.
-//
-// This is important because when items are empty there is no overlay.
-// We still need to call API while user types.
-// ------------------------------------------------------------------------
+    if (_ignoreTextChange) return;
 
     widget.onSearch(_controller.text);
 
     _highlightedNotifier.value =
     _itemsNotifier.value.isEmpty ? -1 : 0;
+
+    if (widget.dataFound && _itemsNotifier.value.isNotEmpty) {
+      if (_focusNode.hasFocus && !_isOpen) {
+        _openDropdown(callSearch: false);
+      } else {
+        _overlayEntry?.markNeedsBuild();
+      }
+    } else {
+      _closeDropdown();
+    }
   }
 
-// ==========================================================================
-// OPEN
-// ==========================================================================
-
-  void _openDropdown({
-    bool callSearch = true,
-  }) {
-// ========================================================================
-// CRITICAL CONDITION
-//
-// NEVER CREATE AN OVERLAY IF:
-//
-// 1. dataFound == false
-// OR
-// 2. items are empty
-//
-// This completely prevents "No data found" popup.
-// ========================================================================
-
-    if (!widget.dataFound) {
+  void _openDropdown({bool callSearch = true}) {
+    if (!mounted || !widget.dataFound) {
       _closeDropdown();
       return;
     }
@@ -327,6 +322,7 @@ class _SearchableCustomerDropdownState<T>
     }
 
     if (_isOpen) {
+      _overlayEntry?.markNeedsBuild();
       return;
     }
 
@@ -335,17 +331,13 @@ class _SearchableCustomerDropdownState<T>
     _highlightedNotifier.value =
     _itemsNotifier.value.isEmpty ? -1 : 0;
 
-    final OverlayState overlay = Overlay.of(context);
+    final overlay = Overlay.of(context);
 
     _overlayEntry = OverlayEntry(
       builder: (overlayContext) {
         return Positioned.fill(
           child: Stack(
             children: [
-// =================================================================
-// OUTSIDE TAP AREA
-// =================================================================
-
               GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: () {
@@ -358,51 +350,36 @@ class _SearchableCustomerDropdownState<T>
                 child: const SizedBox.expand(),
               ),
 
-// =================================================================
-// DROPDOWN
-// =================================================================
-
               CompositedTransformFollower(
                 link: _layerLink,
                 showWhenUnlinked: false,
-                offset: Offset(
-                  0,
-                  widget.height + 5,
-                ),
+                offset: Offset(0, widget.height + 5),
                 child: Material(
                   color: Colors.transparent,
-                  child: ValueListenableBuilder<List<T>>(
-                    valueListenable: _itemsNotifier,
-                    builder: (
-                        context,
-                        items,
-                        child,
-                        ) {
-// ==========================================================
-// SECOND SAFETY CHECK
-//
-// Even if the overlay somehow remains alive while API
-// updates the list, return NOTHING for empty data.
-// ==========================================================
+                  child: SizedBox(
+                    width: _getDropdownWidth(),
+                    child: ValueListenableBuilder<List<T>>(
+                      valueListenable: _itemsNotifier,
+                      builder: (context, items, child) {
+                        if (!widget.dataFound || items.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
 
-                      if (!widget.dataFound || items.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-
-                      return ValueListenableBuilder<int>(
-                        valueListenable: _highlightedNotifier,
-                        builder: (
-                            context,
-                            highlightedIndex,
-                            child,
-                            ) {
-                          return _buildPopup(
-                            items,
-                            highlightedIndex,
-                          );
-                        },
-                      );
-                    },
+                        return ValueListenableBuilder<int>(
+                          valueListenable: _highlightedNotifier,
+                          builder: (
+                              context,
+                              highlightedIndex,
+                              child,
+                              ) {
+                            return _buildPopup(
+                              items,
+                              highlightedIndex,
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -418,29 +395,19 @@ class _SearchableCustomerDropdownState<T>
       setState(() {});
     }
 
-// ------------------------------------------------------------------------
-// Search only when explicitly requested.
-// ------------------------------------------------------------------------
-
     if (callSearch) {
       widget.onSearch(_controller.text);
     }
   }
 
-// ==========================================================================
-// CLOSE
-// ==========================================================================
-
   void _closeDropdown() {
-    final OverlayEntry? entry = _overlayEntry;
-
-    if (entry == null) {
-      return;
-    }
+    final entry = _overlayEntry;
+    if (entry == null) return;
 
     _overlayEntry = null;
 
     entry.remove();
+    entry.dispose();
 
     _highlightedNotifier.value = -1;
 
@@ -448,10 +415,6 @@ class _SearchableCustomerDropdownState<T>
       setState(() {});
     }
   }
-
-// ==========================================================================
-// CLOSE FROM GLOBAL MANAGER
-// ==========================================================================
 
   void _closeFromManager() {
     _closeDropdown();
@@ -461,10 +424,6 @@ class _SearchableCustomerDropdownState<T>
     }
   }
 
-// ==========================================================================
-// KEYBOARD
-// ==========================================================================
-
   KeyEventResult _handleKeyEvent(
       FocusNode node,
       KeyEvent event,
@@ -473,27 +432,15 @@ class _SearchableCustomerDropdownState<T>
       return KeyEventResult.ignored;
     }
 
-// ========================================================================
-// OPEN WITH ENTER / ARROW DOWN
-// ========================================================================
-
     if (!_isOpen) {
       if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
           event.logicalKey == LogicalKeyboardKey.enter) {
-// ---------------------------------------------------------------
-// NEVER OPEN IF THERE IS NO DATA.
-// ---------------------------------------------------------------
-
-        if (!widget.dataFound ||
-            _itemsNotifier.value.isEmpty) {
+        if (!widget.dataFound || _itemsNotifier.value.isEmpty) {
           return KeyEventResult.handled;
         }
 
         _DropdownManager.instance.activate(this);
-
-        _openDropdown(
-          callSearch: false,
-        );
+        _openDropdown(callSearch: false);
 
         return KeyEventResult.handled;
       }
@@ -501,63 +448,33 @@ class _SearchableCustomerDropdownState<T>
       return KeyEventResult.ignored;
     }
 
-// ========================================================================
-// CURRENT ITEMS
-// ========================================================================
-
-    final List<T> items = _itemsNotifier.value;
-
-// ========================================================================
-// SAFETY
-// ========================================================================
+    final items = _itemsNotifier.value;
 
     if (items.isEmpty || !widget.dataFound) {
       _closeDropdown();
       return KeyEventResult.handled;
     }
 
-// ========================================================================
-// ARROW DOWN
-// ========================================================================
-
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      int index = _highlightedNotifier.value;
+      var index = _highlightedNotifier.value;
 
-      if (index < items.length - 1) {
-        index++;
-      } else {
-        index = 0;
-      }
+      index = index < items.length - 1 ? index + 1 : 0;
 
       _highlightedNotifier.value = index;
-
       return KeyEventResult.handled;
     }
-
-// ========================================================================
-// ARROW UP
-// ========================================================================
 
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      int index = _highlightedNotifier.value;
+      var index = _highlightedNotifier.value;
 
-      if (index > 0) {
-        index--;
-      } else {
-        index = items.length - 1;
-      }
+      index = index > 0 ? index - 1 : items.length - 1;
 
       _highlightedNotifier.value = index;
-
       return KeyEventResult.handled;
     }
 
-// ========================================================================
-// ENTER
-// ========================================================================
-
     if (event.logicalKey == LogicalKeyboardKey.enter) {
-      final int index = _highlightedNotifier.value;
+      final index = _highlightedNotifier.value;
 
       if (index >= 0 && index < items.length) {
         _selectItem(items[index]);
@@ -566,29 +483,16 @@ class _SearchableCustomerDropdownState<T>
       return KeyEventResult.handled;
     }
 
-// ========================================================================
-// ESCAPE
-// ========================================================================
-
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       _closeDropdown();
-
       return KeyEventResult.handled;
     }
 
     return KeyEventResult.ignored;
   }
 
-// ==========================================================================
-// SELECT
-// ==========================================================================
-
   void _selectItem(T item) {
-    final String text = widget.displayString(item);
-
-// ------------------------------------------------------------------------
-// Prevent API search while filling selected value.
-// ------------------------------------------------------------------------
+    final text = widget.displayString(item);
 
     _ignoreTextChange = true;
 
@@ -601,47 +505,25 @@ class _SearchableCustomerDropdownState<T>
 
     _ignoreTextChange = false;
 
-// ------------------------------------------------------------------------
-// Send model to parent.
-// ------------------------------------------------------------------------
-
     widget.onSelect(item);
 
-// ------------------------------------------------------------------------
-// Close.
-// ------------------------------------------------------------------------
-
     _closeDropdown();
-
     _DropdownManager.instance.deactivate(this);
-
-// ------------------------------------------------------------------------
-// Remove focus.
-// ------------------------------------------------------------------------
 
     _focusNode.unfocus();
   }
-
-// ==========================================================================
-// POPUP
-// ==========================================================================
 
   Widget _buildPopup(
       List<T> items,
       int highlightedIndex,
       ) {
-// ========================================================================
-// FINAL SAFETY CHECK
-//
-// This function itself can NEVER create a "No data found" widget.
-// ========================================================================
-
     if (!widget.dataFound || items.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return Container(
-      width: _getDropdownWidth(),
+      // Fill the measured width of the text field.
+      width: double.infinity,
       constraints: const BoxConstraints(
         maxHeight: 300,
       ),
@@ -660,21 +542,14 @@ class _SearchableCustomerDropdownState<T>
         ],
       ),
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(
-          vertical: 4,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         shrinkWrap: true,
         itemCount: items.length,
         itemBuilder: (context, index) {
-          final T item = items[index];
-
-          final bool selected = item == widget.value;
-
-          final bool highlighted =
-              index == highlightedIndex;
-
-          final String text =
-          widget.displayString(item);
+          final item = items[index];
+          final selected = item == widget.value;
+          final highlighted = index == highlightedIndex;
+          final text = widget.displayString(item);
 
           return MouseRegion(
             cursor: SystemMouseCursors.click,
@@ -684,49 +559,52 @@ class _SearchableCustomerDropdownState<T>
             child: Listener(
               behavior: HitTestBehavior.opaque,
               onPointerDown: (event) {
-// Only handle LEFT mouse button.
+                // Select on left mouse click only.
                 if (event.kind == PointerDeviceKind.mouse &&
                     event.buttons == kPrimaryButton) {
                   _selectItem(item);
                 }
               },
-              child: Container(
-                width: double.infinity,
-                height: 34,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                ),
-                color: highlighted
-                    ? const Color(0xffDBEAFE)
-                    : selected
-                    ? const Color(0xffEEF2FF)
-                    : Colors.transparent,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        text,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: highlighted || selected
-                              ? const Color(0xff2563EB)
-                              : const Color(0xff334155),
-                          fontWeight: highlighted || selected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+              child: InkWell(
+                onTap: () {
+                  // Supports touch and other tap interactions.
+                  _selectItem(item);
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  color: highlighted
+                      ? const Color(0xffDBEAFE)
+                      : selected
+                      ? const Color(0xffEEF2FF)
+                      : Colors.transparent,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: highlighted || selected
+                                ? const Color(0xff2563EB)
+                                : const Color(0xff334155),
+                            fontWeight: highlighted || selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
                         ),
                       ),
-                    ),
-
-                    if (selected)
-                      const Icon(
-                        Icons.check,
-                        size: 16,
-                        color: Color(0xff2563EB),
-                      ),
-                  ],
+                      if (selected)
+                        const Icon(
+                          Icons.check,
+                          size: 16,
+                          color: Color(0xff2563EB),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -736,112 +614,78 @@ class _SearchableCustomerDropdownState<T>
     );
   }
 
-// ==========================================================================
-// WIDTH
-// ==========================================================================
-
+  /// Reads the rendered width of the actual field.
   double _getDropdownWidth() {
-    final RenderBox? renderBox =
-    context.findRenderObject() as RenderBox?;
+    final renderObject =
+    _fieldKey.currentContext?.findRenderObject();
 
-    if (renderBox == null) {
-      return 250;
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      return renderObject.size.width;
     }
 
-    return renderBox.size.width;
+    return 250;
   }
-
-// ==========================================================================
-// DISPOSE
-// ==========================================================================
 
   @override
   void dispose() {
-// ------------------------------------------------------------------------
-// Remove from global manager.
-// ------------------------------------------------------------------------
-
     _DropdownManager.instance.deactivate(this);
 
-// ------------------------------------------------------------------------
-// Remove overlay.
-// ------------------------------------------------------------------------
+    widget.dropdownController?._detach();
 
     _overlayEntry?.remove();
+    _overlayEntry?.dispose();
     _overlayEntry = null;
 
-// ------------------------------------------------------------------------
-// Listeners.
-// ------------------------------------------------------------------------
-
-    _focusNode.removeListener(
-      _onFocusChanged,
-    );
-
-    _controller.removeListener(
-      _onTextChanged,
-    );
-
-// ------------------------------------------------------------------------
-// Dispose.
-// ------------------------------------------------------------------------
+    _focusNode.removeListener(_onFocusChanged);
+    _controller.removeListener(_onTextChanged);
 
     _itemsNotifier.dispose();
     _highlightedNotifier.dispose();
 
-    _focusNode.dispose();
+    if (_ownsFocusNode) {
+      _focusNode.dispose();
+    }
+
     _controller.dispose();
 
     super.dispose();
   }
-
-// ==========================================================================
-// BUILD
-// ==========================================================================
 
   @override
   Widget build(BuildContext context) {
     return CompositedTransformTarget(
       link: _layerLink,
       child: SizedBox(
+        key: _fieldKey,
         height: widget.height,
         child: Focus(
           onKeyEvent: _handleKeyEvent,
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
-
             textAlign: TextAlign.start,
             textAlignVertical: TextAlignVertical.center,
-
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xff334155),
             ),
-
             decoration: InputDecoration(
               isDense: true,
-
               filled: true,
               fillColor: const Color(0xffF8FAFC),
-
               constraints: BoxConstraints(
                 minHeight: widget.height,
                 maxHeight: widget.height,
               ),
-
               contentPadding: const EdgeInsets.only(
                 left: 8,
                 right: 4,
               ),
-
               hintText: widget.hint,
-
               hintStyle: const TextStyle(
                 fontSize: 13,
                 color: Color(0xffCBD5E1),
               ),
-
               suffixIcon: IgnorePointer(
                 child: Icon(
                   _isOpen
@@ -851,44 +695,33 @@ class _SearchableCustomerDropdownState<T>
                   color: const Color(0xffCCCCCC),
                 ),
               ),
-
               suffixIconConstraints: BoxConstraints(
                 minWidth: 32,
                 maxWidth: 32,
                 minHeight: widget.height,
                 maxHeight: widget.height,
               ),
-
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  widget.borderRadius,
-                ),
+                borderRadius: BorderRadius.circular(widget.borderRadius),
                 borderSide: BorderSide(
                   color: widget.borderColor,
                   width: 1.3,
                 ),
               ),
-
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  widget.borderRadius,
-                ),
+                borderRadius: BorderRadius.circular(widget.borderRadius),
                 borderSide: BorderSide(
                   color: widget.borderColor,
                   width: 1.3,
                 ),
               ),
-
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  widget.borderRadius,
-                ),
+                borderRadius: BorderRadius.circular(widget.borderRadius),
                 borderSide: BorderSide(
                   color: Colors.blue.shade200,
                   width: 1.3,
                 ),
               ),
-
               disabledBorder: InputBorder.none,
               errorBorder: InputBorder.none,
               focusedErrorBorder: InputBorder.none,
@@ -899,4 +732,3 @@ class _SearchableCustomerDropdownState<T>
     );
   }
 }
-

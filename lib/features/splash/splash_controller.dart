@@ -20,7 +20,6 @@ class SplashController extends ChangeNotifier {
       ),
     );
 
-    GlobalVars.userId = "353";
     if(GlobalVars.userId.isNotEmpty)
     {
       isLogin = true;

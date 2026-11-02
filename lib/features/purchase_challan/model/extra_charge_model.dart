@@ -56,7 +56,6 @@ class ExtraChargeModel {
         return taxAmount;
       }
 
-
     if(itemValue.isTaxApplicable)
     {
       taxAmount = totalValue * itemValue.taxPercent / 100;
@@ -68,7 +67,6 @@ class ExtraChargeModel {
         } else {
           chargeList = distributePriceProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.getFinalPriceAfterDiscount).toList());
       }
-
 
       double tax = 0;
       for(var x=0; x<chargeList.length; x++)

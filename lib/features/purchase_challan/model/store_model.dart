@@ -1,3 +1,5 @@
+import '../../dashboard/model/store_model.dart';
+
 class StoreListResponse {
   final int? code;
   final bool? error;
@@ -48,34 +50,6 @@ class StoreListResponse {
       'StoreList': storeList
           .map((e) => e.toJson())
           .toList(),
-    };
-  }
-}
-
-class StoreModel {
-  final String? id;
-  final String? store;
-  final String? shortName;
-
-  StoreModel({
-    this.id,
-    this.store,
-    this.shortName,
-  });
-
-  factory StoreModel.fromJson(Map<String, dynamic> json) {
-    return StoreModel(
-      id: json['id']?.toString(),
-      store: json['Store']?.toString(),
-      shortName: json['ShortName']?.toString(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'Store': store,
-      'ShortName': shortName,
     };
   }
 }

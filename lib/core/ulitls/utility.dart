@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
 import '../widget/toast.dart';
@@ -56,7 +57,6 @@ void showMessage(String message, ToastType info, { String? title}){
   Toast.show(
       type: info,
       title: title,
-      duration: Duration(milliseconds: 2000),
       message: message
   );
 }
@@ -331,4 +331,64 @@ double getPercentage(int value, int total) {
   return double.parse(
     ((value / total) * 100).toStringAsFixed(1),
   );
+}
+
+Future<String> loadProductPrefix() async {
+  try {
+    final prefs =
+    await SharedPreferences.getInstance();
+
+    return prefs.getString(
+      productPrefixKey,
+    ) ??
+        'BL';
+  } catch (e) {
+    debugPrint(
+      'Barcode Settings Error: $e',
+    );
+
+    return 'BL';
+  }
+}
+
+Future<String> loadBarcodePrefix() async {
+  try {
+    final prefs =
+    await SharedPreferences.getInstance();
+
+    return prefs.getString(barcodePrefixKey,) ?? 'TUS';
+
+  } catch (e) {
+    debugPrint(
+      'Barcode Settings Error: $e',
+    );
+
+    return 'TUS';
+  }
+}
+
+
+
+Future<String> loadMultipleBarcode() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+
+    final value = prefs.getBool(multiBarcodeStorageKey) ?? false;
+
+    return value? '1':'0';
+
+  } catch (e) {
+    debugPrint(
+      'Barcode Settings Error: $e',
+    );
+    return '0';
+  }
+}
+
+double getDoublePrice(String? value) {
+  try {
+    return double.tryParse(value?.trim() ?? '') ?? 0.0;
+  } catch (_) {
+    return 0.0;
+  }
 }

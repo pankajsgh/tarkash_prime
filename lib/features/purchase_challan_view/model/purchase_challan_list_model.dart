@@ -1,12 +1,14 @@
 class PurchaseChallanListModel {
   final String id;
   final String supplierId;
+  final String supplierName;
   final String gstNo;
 
   final String storeId;
   String storeName;
 
   final String challanNo;
+  final String referenceNo;
   final String challanDate;
 
   final String lrNo;
@@ -33,18 +35,22 @@ class PurchaseChallanListModel {
   final double grandTotal;
 
   final String remark;
+  final String status;
   final String createdAt;
   final String updatedAt;
 
   PurchaseChallanListModel({
     required this.id,
     required this.supplierId,
+    required this.supplierName,
     required this.gstNo,
 
     required this.storeId,
     required this.storeName,
 
     required this.challanNo,
+    required this.referenceNo,
+
     required this.challanDate,
 
     required this.lrNo,
@@ -69,6 +75,7 @@ class PurchaseChallanListModel {
     required this.grandTotal,
 
     required this.remark,
+    required this.status,
     required this.createdAt,
     required this.updatedAt,
 
@@ -94,6 +101,7 @@ class PurchaseChallanListModel {
 
       supplierId:
       json['supplier_id']?.toString() ?? '',
+      supplierName: json['supplier_name']?.toString() ?? '',
 
       gstNo:
       json['gst_no']?.toString() ?? '',
@@ -116,6 +124,11 @@ class PurchaseChallanListModel {
 
       challanNo:
       json['challan_no']?.toString() ?? '',
+
+      referenceNo:
+        json['reference_no']?.toString() ?? '',
+
+
 
       challanDate:
       json['challan_date']?.toString() ?? '',
@@ -210,6 +223,9 @@ class PurchaseChallanListModel {
 
       remark:
       json['remark']?.toString() ?? '',
+
+      status:
+      json['status']?.toString() ?? '',
 
       createdAt:
       json['created_at']?.toString() ?? '',

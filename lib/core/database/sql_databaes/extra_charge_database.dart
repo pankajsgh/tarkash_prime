@@ -86,9 +86,7 @@ class ExtraChargeDatabase {
   // GET BY ID
   // ============================================================
 
-  Future<Map<String, dynamic>?> getById(
-      int id,
-      ) async {
+  Future<Map<String, dynamic>?> getById(int id,) async {
     final db = await database;
 
     await createTable();

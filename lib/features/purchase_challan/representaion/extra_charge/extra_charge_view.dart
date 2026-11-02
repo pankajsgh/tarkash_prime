@@ -26,6 +26,12 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
   PurchaseController get purchaseController => widget.purchaseController;
 
   @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
+
+  @override
   void dispose() {
     _searchDebounce?.cancel();
     _debounce?.cancel();
@@ -225,17 +231,20 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
     final items = purchaseController.extraChargeController.items;
 
     if (items.isEmpty) {
-      return Container(
-        height: 130,
-        alignment: Alignment.center,
-        child: const Text(
-          'No extra charge added',
-          style: TextStyle(
-            fontSize: 11,
-            color: Color(0xff999999),
-          ),
-        ),
-      );
+
+      purchaseController.extraChargeController.addItem();
+
+      // return Container(
+      //   height: 130,
+      //   alignment: Alignment.center,
+      //   child: const Text(
+      //     'No extra charge added',
+      //     style: TextStyle(
+      //       fontSize: 11,
+      //       color: Color(0xff999999),
+      //     ),
+      //   ),
+      // );
     }
 
     return SizedBox(

@@ -9,7 +9,7 @@ class ProductListResponse {
   final String? nums;
   final String? totalData;
   final String? msg;
-  final List<ProductModel> productList;
+  final List<ProductModelDashboard> productList;
 
   ProductListResponse({
     this.code,
@@ -32,7 +32,7 @@ class ProductListResponse {
 
       productList: (json['ProductList'] as List?)
           ?.map(
-            (e) => ProductModel.fromJson(
+            (e) => ProductModelDashboard.fromJson(
           Map<String, dynamic>.from(e),
         ),
       )
@@ -59,7 +59,7 @@ class ProductListResponse {
 // PRODUCT
 // =========================================================
 
-class ProductModel {
+class ProductModelDashboard {
   final String? id;
   String name;
   ColorModel? color;
@@ -73,7 +73,7 @@ class ProductModel {
   String? purchaseRate;
   String? discount;
 
-  ProductModel({
+  ProductModelDashboard({
     this.id,
     required this.name,
     this.supplierName,
@@ -88,8 +88,8 @@ class ProductModel {
     this.hsnTaxSlab = const [],
   });
 
-  factory ProductModel.fromJson(Map<String, dynamic> json) {
-    return ProductModel(
+  factory ProductModelDashboard.fromJson(Map<String, dynamic> json) {
+    return ProductModelDashboard(
       id: json['id']?.toString(),
       name: json['product']?? "",
       supplierName: json['supl_name']?.toString(),
@@ -207,34 +207,4 @@ class BrandModel {
   }
 }
 
-// =========================================================
-// HSN TAX SLAB
-// =========================================================
 
-// class HsnTaxSlabModel {
-//   final String? priceFrom;
-//   final String? priceTo;
-//   final String? tax;
-//
-//   HsnTaxSlabModel({
-//     this.priceFrom,
-//     this.priceTo,
-//     this.tax,
-//   });
-//
-//   factory HsnTaxSlabModel.fromJson(Map<String, dynamic> json) {
-//     return HsnTaxSlabModel(
-//       priceFrom: json['PriceFrom']?.toString(),
-//       priceTo: json['PriceTo']?.toString(),
-//       tax: json['Tax']?.toString(),
-//     );
-//   }
-//
-//   Map<String, dynamic> toJson() {
-//     return {
-//       'PriceFrom': priceFrom,
-//       'PriceTo': priceTo,
-//       'Tax': tax,
-//     };
-//   }
-//}

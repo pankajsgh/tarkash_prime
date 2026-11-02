@@ -46,6 +46,12 @@ const String developerPage = 'https://www.gobuzy.com/';
 
 const String accessPackingUpdate = 'PackingUpdate';
 const String accessPackingItemDelete = 'PackingItemDelete';
+const String barcodePrefixKey = 'barcodePrefixKey';
+const String productPrefixKey = 'productPrefixKey';
+const String multiBarcodeStorageKey = 'multiple_barcode_pricing';
+const String serverIpKey = 'local_server_ip';
+
+
 
 final List<Map<String, dynamic>> categories = [
   {"title": "Design", "icon": Icons.design_services_rounded},

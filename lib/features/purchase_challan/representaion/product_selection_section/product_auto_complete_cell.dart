@@ -11,12 +11,16 @@ class ProductAutoCompleteCell extends StatefulWidget {
   final PurchaseController controller;
   final Function(String) callback;
 
+  // Opens the Size dropdown after product selection.
+  final VoidCallback? onProductSelected;
+
   const ProductAutoCompleteCell({
     super.key,
     required this.item,
     required this.width,
     required this.controller,
     required this.callback,
+    this.onProductSelected,
   });
 
   @override
@@ -44,12 +48,11 @@ class _ProductAutoCompleteCellState
     }
 
     _states.clear();
-
     super.dispose();
   }
 
   // ---------------------------------------------------------------------------
-  // SCROLL
+  // SCROLL TO SELECTED PRODUCT
   // ---------------------------------------------------------------------------
 
   void _scrollToSelected(ProductAutocompleteState state) {
@@ -58,7 +61,6 @@ class _ProductAutoCompleteCellState
 
       final controller = state.scrollController;
 
-      // The autocomplete popup may not have attached its ListView yet.
       if (!controller.hasClients) return;
 
       final index = state.selectedIndex;
@@ -68,7 +70,6 @@ class _ProductAutoCompleteCellState
       }
 
       final position = controller.position;
-
       final currentOffset = position.pixels;
       final viewportHeight = position.viewportDimension;
 
@@ -83,10 +84,9 @@ class _ProductAutoCompleteCellState
         targetOffset = itemBottom - viewportHeight;
       }
 
-      targetOffset = targetOffset.clamp(
-        0.0,
-        position.maxScrollExtent,
-      );
+      targetOffset = targetOffset
+          .clamp(0.0, position.maxScrollExtent)
+          .toDouble();
 
       if ((targetOffset - currentOffset).abs() < 0.5) {
         return;
@@ -111,17 +111,23 @@ class _ProductAutoCompleteCellState
       return;
     }
 
-    widget.item.productPrice = 0;
-    widget.item.quantityController.text = '1';
-    widget.item.priceController.text = '0';
-    widget.item.mrpRateController.text = '0';
-    widget.item.wholesaleRateController.text = '0';
-    widget.item.retailRateController.text = '0';
-    widget.item.discountController.text = '0';
-    widget.item.product = null;
+    if (widget.item.productId == null ||
+        widget.item.product == null ||
+        widget.item.product!.name != text) {
+      widget.item.productPrice = 0;
+      widget.item.quantityController.text = '1';
+      widget.item.priceController.text = '0';
+      widget.item.mrpRateController.text = '0';
+      widget.item.wholesaleRateController.text = '0';
+      widget.item.retailRateController.text = '0';
+      widget.item.discountController.text = '0';
 
-    widget.controller.update();
-    widget.callback(text);
+      widget.item.product = null;
+      widget.item.productId = null;
+
+      widget.controller.update();
+      widget.callback(text);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -132,18 +138,28 @@ class _ProductAutoCompleteCellState
       ProductAutocompleteState state,
       ProductModel product,
       ) {
+    // Save the selected product first.
     widget.controller.selectProduct(
       widget.item,
       product,
     );
 
+    // Clear autocomplete options.
     state.reset();
 
+    // Rebuild the purchase row.
     widget.controller.update();
+
+    // Open Size after the product row has rebuilt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      widget.onProductSelected?.call();
+    });
   }
 
   // ---------------------------------------------------------------------------
-  // KEYBOARD
+  // KEYBOARD HANDLING
   // ---------------------------------------------------------------------------
 
   KeyEventResult _handleKey(
@@ -158,7 +174,7 @@ class _ProductAutoCompleteCellState
 
     final products = state.options;
 
-    // ESC
+    // ESCAPE
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       state.selectedIndex = -1;
       focusNode.unfocus();
@@ -272,7 +288,7 @@ class _ProductAutoCompleteCellState
   }
 
   // ---------------------------------------------------------------------------
-  // PRODUCT ITEM
+  // PRODUCT OPTION
   // ---------------------------------------------------------------------------
 
   Widget _productItem(
@@ -309,13 +325,10 @@ class _ProductAutoCompleteCellState
             child: Row(
               children: [
                 const SizedBox(width: 2),
-
                 Expanded(
                   child: _productDetails(product),
                 ),
-
                 const SizedBox(width: 8),
-
                 if ((product.brand?.name ?? '').isNotEmpty)
                   _brand(product),
               ],
@@ -327,11 +340,8 @@ class _ProductAutoCompleteCellState
   }
 
   Widget _productDetails(ProductModel product) {
-    final hasCategory =
-        (product.category ?? '').isNotEmpty;
-
-    final hasHsn =
-        (product.hsnCode?.name ?? '').isNotEmpty;
+    final hasCategory = (product.category ?? '').isNotEmpty;
+    final hasHsn = (product.hsnCode?.name ?? '').isNotEmpty;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -436,10 +446,7 @@ class _ProductAutoCompleteCellState
           return product.name ?? '';
         },
 
-        // ---------------------------------------------------------------------
         // SEARCH
-        // ---------------------------------------------------------------------
-
         optionsBuilder: (TextEditingValue value) async {
           final query = value.text.trim();
 
@@ -452,29 +459,23 @@ class _ProductAutoCompleteCellState
 
           state.selectedIndex = -1;
 
-          final result =
-          await widget.controller.getProductList(query);
+          final result = await widget.controller.getProductList(query);
 
           if (requestId != state.requestId) {
             return const <ProductModel>[];
           }
 
-          if (widget.item.nameController.text.trim() !=
-              query) {
+          if (widget.item.nameController.text.trim() != query) {
             return const <ProductModel>[];
           }
 
           state.options = List<ProductModel>.from(result);
-
           state.selectedIndex = -1;
 
           return state.options;
         },
 
-        // ---------------------------------------------------------------------
         // SELECTED
-        // ---------------------------------------------------------------------
-
         onSelected: (product) {
           _selectProduct(
             state,
@@ -482,10 +483,7 @@ class _ProductAutoCompleteCellState
           );
         },
 
-        // ---------------------------------------------------------------------
         // FIELD
-        // ---------------------------------------------------------------------
-
         fieldViewBuilder: (
             context,
             textController,
@@ -499,10 +497,7 @@ class _ProductAutoCompleteCellState
           );
         },
 
-        // ---------------------------------------------------------------------
         // OPTIONS
-        // ---------------------------------------------------------------------
-
         optionsViewBuilder: (
             context,
             onSelected,
@@ -569,11 +564,9 @@ class ProductAutocompleteState {
   List<ProductModel> options = [];
 
   int selectedIndex = -1;
-
   int requestId = 0;
 
-  final ScrollController scrollController =
-  ScrollController();
+  final ScrollController scrollController = ScrollController();
 
   void reset() {
     options.clear();

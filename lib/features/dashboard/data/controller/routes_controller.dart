@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/routes/routes.dart';
+
+
 class RoutesController extends ChangeNotifier {
 
   bool isLoading = false;
 
-  String selectedRoutes = '/dashboard';
-
-  static const String dashboard = '/dashboard';
-  static const String purchasePage = '/purchasePage';
-  static const String expense = '/expense';
-  static const String report = '/report';
-  static const String taskDetail = '/taskDetail';
-  static const String profile = '/profile';
-  static const String vendor = '/vendor';
-  static const String otherChargeScreen = '/otherChargeScreen';
-
+  String selectedRoutes = Routes.dashboard;
+  Map<String, dynamic> params = {};
   void enableLoader(){
     isLoading = true;
     notifyListeners();
@@ -25,10 +19,14 @@ class RoutesController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setRoute(String route)async{
+  Future<void> setRoute(String route, {Map<String, dynamic>? data})async{
     enableLoader();
     await Future.delayed(Duration(milliseconds: 600));
     disableLoader();
+    if(data!=null)
+      {
+        params = data;
+      }
     selectedRoutes = route;
   }
 

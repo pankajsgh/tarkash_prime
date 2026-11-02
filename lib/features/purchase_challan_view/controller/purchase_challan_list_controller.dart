@@ -7,13 +7,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/database/sql_databaes/purchase_challan_database.dart';
+import '../../../core/network/api_repository.dart';
 import '../model/purchase_challan_list_model.dart';
 
 class PurchaseChallanListController extends ChangeNotifier {
-  final Dio dio;
+  final String listApi;
 
   PurchaseChallanListController({
-    required this.dio,
+    required this.listApi,
   });
 
   bool isLoading = false;
@@ -27,60 +28,16 @@ class PurchaseChallanListController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (GlobalVars.isOffline) {
-        // ======================================================
-        // OFFLINE
-        // ======================================================
 
-        final data = await PurchaseDatabase.instance.getAllChallans();
+        print(listApi);
 
-        challans = data
-            .map(
-              (item) => PurchaseChallanListModel.fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
-            .toList();
-
-        for(var x in challans){
-          if( x.storeId.isNotEmpty && x.storeName.isEmpty)
-            {
-             var stores =  storeJson['StoreList'] as List<Map<String, String>>;
-             x.storeName = stores.firstWhere((e)=>e['id']==x.storeId)['ShortName']?? '';
-            }
-
-          if( x.transportId.isNotEmpty && x.transportName.isEmpty)
-          {
-
-            var transport =  transportJson['TransportList'] as List<Map<String, String>>;
-            x.transportName = transport.firstWhere((e)=>e['id']==x.transportId)['transport']?? '';
-          }
-          if( x.agentId.isNotEmpty && x.agentName.isEmpty)
-          {
-            var agents =  agentJson['AgentList'] as List<Map<String, String>>;
-            x.agentName = agents.firstWhere((e)=>e['id']==x.agentId)['Agent']?? '';
-          }
-        }
-
-        print(
-          'Offline challans loaded: ${challans.length}',
-        );
-      } else {
-        // ======================================================
-        // ONLINE
-        // ======================================================
-
-        print(ApiPath.purchaseChallansListApi);
-
-        final response = await dio.get(
-          ApiPath.purchaseChallansListApi,
+        final response = await ApiProvider.createServerRequest(
+          apiUrl:  listApi
         );
 
-        final responseData = response.data;
 
-        if (responseData is Map &&
-            responseData['status'] == true) {
-          final data = responseData['data'];
+        if (response['status'] == true) {
+          final data = response['data'];
 
           if (data is List) {
             challans = data
@@ -98,11 +55,11 @@ class PurchaseChallanListController extends ChangeNotifier {
         } else {
           challans = [];
 
-          errorMessage = responseData is Map
-              ? responseData['message']?.toString()
+          errorMessage = response is Map
+              ? response['message']?.toString()
               : 'Unable to load challans';
         }
-      }
+
     } on DioException catch (e) {
       errorMessage = e.response?.data is Map
           ? e.response?.data['message']?.toString()
@@ -114,4 +71,110 @@ class PurchaseChallanListController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> deleteChallan(String id, {required String apiPath}) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+
+
+      // ======================================================
+      // ONLINE
+      // ======================================================
+
+      final request = {
+        'id': id.toString(),
+      };
+
+
+      final response =
+      await ApiProvider.createServerRequest(
+        apiUrl: apiPath,
+        requestBody: request,
+        isFormData: true,
+      );
+
+      if (response['status'] == true) {
+        return true;
+      }
+
+      errorMessage =
+          response['message']?.toString() ??
+              'Failed to delete purchase challan';
+
+      return false;
+    } on DioException catch (e) {
+      errorMessage = e.response?.data is Map
+          ? e.response?.data['message']?.toString() ??
+          'Failed to delete purchase challan'
+          : e.message ?? 'Network error';
+
+      return false;
+    } catch (e) {
+      errorMessage = e
+          .toString()
+          .replaceFirst('Exception: ', '');
+
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> cancelChallan(String id) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+
+
+      // ======================================================
+      // ONLINE
+      // ======================================================
+
+      final request = {
+        'id': id.toString(),
+        'status': 'Cancel',
+      };
+
+      final response =
+      await ApiProvider.createServerRequest(
+        apiUrl: ApiPath.cancelPurchaseChallanApi,
+        requestBody: request,
+        isFormData: true,
+      );
+
+      if (response['status'] == true) {
+        return true;
+      }
+
+      errorMessage =
+          response['message']?.toString() ??
+              'Failed to delete purchase challan';
+
+      return false;
+    } on DioException catch (e) {
+      errorMessage = e.response?.data is Map
+          ? e.response?.data['message']?.toString() ??
+          'Failed to delete purchase challan'
+          : e.message ?? 'Network error';
+
+      return false;
+    } catch (e) {
+      errorMessage = e
+          .toString()
+          .replaceFirst('Exception: ', '');
+
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+
 }

@@ -3,14 +3,16 @@ import 'package:calculation_panel/core/vars/global_vars.dart';
 import 'package:flutter/material.dart';
 import '../../../../../core/network/api_path.dart';
 import '../../../../../core/network/api_repository.dart';
+import '../../../../../core/widget/supplier_field.dart';
+import '../../../../dashboard/model/store_model.dart';
+import '../../../model/party_model.dart';
 import '../../../model/store_model.dart';
 import '../../../model/transport_model.dart';
-import '../model/supplier_model.dart';
+import '../../../model/supplier_model.dart';
 
 class SupplierController extends ChangeNotifier {
 
   final TextEditingController challanController = TextEditingController();
-  final TextEditingController gstinController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
 
   List<Party> suppliers = [];
@@ -20,11 +22,10 @@ class SupplierController extends ChangeNotifier {
   Future<void> getPartyTypeList(String search) async {
 
     Map<String, dynamic> requestBody = {};
-    requestBody['PartyType'] = "2";
+    requestBody['PartyType'] = "26";
     requestBody['search'] = search;
     requestBody['limit'] = "0";
     var response = await ApiProvider.createServerRequest(apiUrl: ApiPath.getPartyList, requestBody: requestBody, isFormData: true);
-
     if(response['error']!=null && response['error'])
     {
       try{
@@ -42,6 +43,8 @@ class SupplierController extends ChangeNotifier {
     stores = GlobalVars.storeList;
     notifyListeners();
   }
+
+
   Future<void> getTransportList(String search) async {
 
     Map<String, dynamic> requestBody = {};
@@ -49,12 +52,6 @@ class SupplierController extends ChangeNotifier {
     requestBody['limit'] = "0";
 
     var response = await ApiProvider.createServerRequest(apiUrl: ApiPath.getTransportList, requestBody: requestBody, isFormData: true);
-
-
-    if(GlobalVars.isOffline)
-      {
-        response = transportJson;
-      }
 
 
     if(response['error']!=null && response['error'])
@@ -86,7 +83,6 @@ class SupplierController extends ChangeNotifier {
   void dispose() {
 
     challanController.dispose();
-    gstinController.dispose();
     dateController.dispose();
     super.dispose();
   }

@@ -1,38 +1,49 @@
+import 'package:calculation_panel/core/network/api_path.dart';
+import 'package:calculation_panel/features/dashboard/data/controller/routes_controller.dart';
 import 'package:flutter/material.dart';
-
 import 'package:calculation_panel/core/database/local_store_manager.dart';
 import 'package:calculation_panel/core/theme/colors.dart';
 import 'package:calculation_panel/core/vars/global_vars.dart';
-import 'package:calculation_panel/features/dashboard/presentaion/erp_top_header.dart';
 import 'package:calculation_panel/features/purchase_challan/controller/purchase_controller.dart';
-import 'package:calculation_panel/features/purchase_challan/model/product_model.dart';
 import 'package:calculation_panel/features/purchase_challan/representaion/extra_charge/extra_charge_view.dart';
 import 'package:calculation_panel/features/purchase_challan/representaion/product_selection_section/product_selection_section.dart';
-import 'package:calculation_panel/features/purchase_challan/representaion/supplier_header/model/supplier_model.dart';
+import 'package:calculation_panel/features/purchase_challan/model/supplier_model.dart';
 import 'package:calculation_panel/features/purchase_challan/representaion/supplier_header/supplier_header.dart';
-
+import '../../../core/routes/routes.dart';
 import '../../components/custome_dropdown_widget.dart';
+import '../../supplier_voucher/view/supplier_header/custom_supplier_header.dart';
+import '../model/party_model.dart';
 
-class PurchasePage extends StatefulWidget {
-  const PurchasePage({super.key});
+class PurchaseChallanPage extends StatefulWidget {
+  final String? challanId;
+  final RoutesController routesController;
+  const PurchaseChallanPage({super.key, this.challanId, required this.routesController});
 
   @override
-  State<PurchasePage> createState() => _PurchasePageState();
+  State<PurchaseChallanPage> createState() => _PurchaseChallanPageState();
 }
 
-class _PurchasePageState extends State<PurchasePage>
-    with WidgetsBindingObserver {
+class _PurchaseChallanPageState extends State<PurchaseChallanPage> with WidgetsBindingObserver {
   late final PurchaseController purchaseController;
-
   bool _isSavingOnClose = false;
+  bool _isEditMode= false;
 
   @override
   void initState() {
     super.initState();
+    GlobalVars.globalRoutes = Routes.purchaseChallanPage;
+    widget.routesController.params = {};
+    purchaseController = PurchaseController(
+        submitChallanApi: ApiPath.submitChallanApi,
+        updateChallanApi: ApiPath.updateChallanApi,
+        draftType: 'purchase_challan'
+    );
 
-    GlobalVars.globalRoutes = "/purchasePage";
-
-    purchaseController = PurchaseController();
+    if(widget.challanId!=null)
+    {
+      purchaseController.getPreviousData(widget.challanId!);
+      _isEditMode =true;
+    }
     purchaseController.getAgentList('');
 
     // Add first empty item.
@@ -51,31 +62,25 @@ class _PurchasePageState extends State<PurchasePage>
   }
 
   Future<void> onAppClose() async {
-    if (_isSavingOnClose) {
-      return;
-    }
+    if (_isSavingOnClose) return;
 
     final supplier = purchaseController.selectSupplier;
 
-    if (supplier == null) {
-      return;
-    }
-
-    if (purchaseController.items.isEmpty) {
+    if (supplier == null || purchaseController.items.isEmpty) {
       return;
     }
 
     _isSavingOnClose = true;
 
     try {
-      final data = purchaseController.toDataMap();
+      await purchaseController.saveCurrentSupplierData();
 
-      await ChallanCartStorage.save(
-        data,
-        supplier.id,
+      debugPrint(
+        'Purchase challan auto-save successful for supplier: ${supplier.id}',
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Purchase auto-save error: $e');
+      debugPrintStack(stackTrace: stackTrace);
     } finally {
       _isSavingOnClose = false;
     }
@@ -84,8 +89,18 @@ class _PurchasePageState extends State<PurchasePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    GlobalVars.supplierCatMargin.clear();
     purchaseController.dispose();
     super.dispose();
+  }
+
+
+  String _draftListKey(String supplierId) {
+    return 'purchase_challan_draft_$supplierId';
+  }
+
+  String _draftDataKey(String supplierId, String draftName) {
+    return 'purchase_challan_${supplierId}_$draftName';
   }
 
   // ============================================================
@@ -97,7 +112,13 @@ class _PurchasePageState extends State<PurchasePage>
     return Scaffold(
       backgroundColor: const Color(0xffF5F7FB),
       body: SafeArea(
-        child: _buildWorkspace(),
+        child: ListenableBuilder(
+          listenable: purchaseController,
+          builder: (context, _) {
+            return _buildWorkspace();
+          },
+        ),
+
       ),
     );
   }
@@ -107,6 +128,7 @@ class _PurchasePageState extends State<PurchasePage>
   // ============================================================
 
   Widget _buildWorkspace() {
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
         horizontal: 20,
@@ -116,32 +138,61 @@ class _PurchasePageState extends State<PurchasePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPageHeader(),
-
           const SizedBox(height: 12),
+          // SupplierHeader(
+          //   isEditMode: _isEditMode,
+          //   purchaseController: purchaseController,
+          // ),
+          CustomSupplierHeader(
+            isEditMode: _isEditMode,
+            selectedSupplier: purchaseController.selectSupplier,
+            selectedStore: purchaseController.selectedStore,
+            selectedTransport: purchaseController.selectedTransport,
+            selectedSeries: purchaseController.selectedSeries,
+            gstNo: purchaseController.gstNo,
+            challanNo: purchaseController.challanNo,
+            selectedDate: purchaseController.selectedData,
+            referenceNo: purchaseController.referenceNo?? '',
 
-          ListenableBuilder(
-            listenable: purchaseController,
-            builder: (context, _) {
-              return SupplierHeader(
-                purchaseController: purchaseController,
+            onSupplierChanged: (supplier) {
+              if (purchaseController.selectedAgent == null) {
+                purchaseController.setAgent(supplier?.agency);
+              }
+
+              purchaseController.setSupplier(supplier);
+            },
+
+            onStoreChanged: purchaseController.setStore,
+            onTransportChanged: purchaseController.setTransport,
+            onSeriesChanged: purchaseController.setSeries,
+
+            onDateChanged: (date) {
+              purchaseController.setData(date);
+              GlobalVars.currentData = date;
+            },
+
+            onChallanNoChanged: (value) {
+              purchaseController.setChallanNo(
+                value,
+                purchaseController.gstNo,
+              );
+            },
+
+            onGstChanged: (value) {
+              purchaseController.setChallanNo(
+                purchaseController.challanNo,
+                value,
               );
             },
           ),
 
           const SizedBox(height: 16),
-
           ProductSelectionSection(
             controller: purchaseController,
           ),
 
           const SizedBox(height: 16),
-
-          ListenableBuilder(
-            listenable: purchaseController,
-            builder: (context, _) {
-              return _buildBottomCards();
-            },
-          ),
+          _buildBottomCards(),
         ],
       ),
     );
@@ -160,8 +211,8 @@ class _PurchasePageState extends State<PurchasePage>
             children: [
               Row(
                 children: [
-                  const Expanded(
-                    child: _PageBreadcrumb(),
+                  Expanded(
+                    child: _PageBreadcrumb(_isEditMode, widget.routesController),
                   ),
                   _statusBadge(),
                 ],
@@ -187,7 +238,7 @@ class _PurchasePageState extends State<PurchasePage>
 
         return Row(
           children: [
-            const _PageBreadcrumb(),
+             _PageBreadcrumb(_isEditMode, widget.routesController),
 
             const SizedBox(width: 10),
 
@@ -266,7 +317,7 @@ class _PurchasePageState extends State<PurchasePage>
           color: const Color(0xffFED7AA),
         ),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -276,7 +327,7 @@ class _PurchasePageState extends State<PurchasePage>
           ),
           SizedBox(width: 6),
           Text(
-            'Draft',
+            _isEditMode? 'Edit': 'Draft',
             style: TextStyle(
               color: Color(0xffC2410C),
               fontSize: 11,
@@ -377,6 +428,8 @@ class _PurchasePageState extends State<PurchasePage>
   // SAVE DRAFT POPUP
   // ============================================================
 
+
+
   Future<void> showDateNamePopup(BuildContext context) async {
     final supplier = purchaseController.selectSupplier;
 
@@ -388,67 +441,60 @@ class _PurchasePageState extends State<PurchasePage>
       return;
     }
 
+    // Use exactly the same key when reading and saving the draft list.
+    final challanType = _draftListKey(supplier.id);
+
     DraftModel? draftList;
 
     try {
       draftList = await ChallanCartStorage.getDraft(
-        supplier.id,
+        challanType,
       );
     } catch (e) {
-      debugPrint('Get draft error: $e');
+      debugPrint('Get supplier voucher draft list error: $e');
     }
 
     final List<String> previousDraftNames = List<String>.from(
       draftList?.draftName ?? <String>[],
     );
 
-    if (!context.mounted) {
-      return;
-    }
+    if (!context.mounted) return;
 
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return _SaveDraftDialog(
+          supplierId: supplier.id,
           existingDraftNames: previousDraftNames,
           onSave: (draftName) async {
-            final trimmedName = draftName.trim();
-
-            if (trimmedName.isEmpty) {
-              return false;
-            }
+            final name = draftName.trim();
+            if (name.isEmpty) return false;
 
             try {
-              final alreadyExists =
-              previousDraftNames.contains(trimmedName);
+              final dataKey = _draftDataKey(supplier.id, name);
 
-              final updatedDraftNames =
-              List<String>.from(previousDraftNames);
+              debugPrint('Saving draft data key: $dataKey');
 
-              if (!alreadyExists) {
-                updatedDraftNames.add(trimmedName);
-              }
-
-              final draftData = DraftModel(
-                partyId: supplier.id,
-                draftName: updatedDraftNames,
-              );
-
-              // Save draft names.
-              await ChallanCartStorage.saveDraft(
-                draftData,
-              );
-
-              // Save actual purchase data.
-              await ChallanCartStorage.save(
+              final dataSaved = await ChallanCartStorage.save(
                 purchaseController.toDataMap(),
-                '${supplier.id}_$trimmedName',
+                key: dataKey,
               );
+
+              if (!dataSaved) return false;
+
+              debugPrint('Saving draft list key: $challanType');
+
+              final listSaved = await ChallanCartStorage.addDraftName(
+                challanType: challanType,
+                draftId: dataKey,
+              );
+
+              if (!listSaved) return false;
 
               return true;
             } catch (e) {
-              debugPrint('Save draft error: $e');
+              debugPrint('Save supplier voucher draft error: $e');
               return false;
             }
           },
@@ -457,56 +503,41 @@ class _PurchasePageState extends State<PurchasePage>
     );
   }
 
-  // ============================================================
-  // DRAFT LIST POPUP
-  // ============================================================
 
   Future<String?> showDraftPopup(BuildContext context) async {
     final supplier = purchaseController.selectSupplier;
 
     if (supplier == null) {
-      _showSnackBar(
-        'Please select a supplier',
-        isError: true,
-      );
+      _showSnackBar('Please select a supplier', isError: true);
       return null;
     }
 
-    DraftModel? draftList;
+    final challanType = purchaseController.draftListKey(supplier.id);
 
     try {
-      draftList = await ChallanCartStorage.getDraft(
-        supplier.id,
+      final draftList = await ChallanCartStorage.getDraft(challanType);
+
+      final draftNames = List<String>.from(
+        draftList?.draftName ?? <String>[],
       );
-    } catch (e) {
-      debugPrint('Get draft list error: $e');
-    }
 
-    if (!context.mounted) {
-      return null;
-    }
 
-    final List<String> draftNames = List<String>.from(
-      draftList?.draftName ?? <String>[],
-    );
+      print("this is good7854");
+      print(draftNames);
 
-    if (draftNames.isEmpty) {
-      _showSnackBar(
-        'No saved drafts found',
-        isError: true,
-      );
-      return null;
-    }
+      if (!context.mounted) return null;
 
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        return _DraftListDialog(
+      if (draftNames.isEmpty) {
+        _showSnackBar('No saved drafts found', isError: true);
+        return null;
+      }
+      return await showDialog<String>(
+        context: context,
+        builder: (_) => _DraftListDialog(
+          supplierId: supplier.id,
           draftNames: draftNames,
-          onSelect: (draftName) {
-            purchaseController.getDraftData(
-              draftName,
-            );
+          onSelect: (draftName) async {
+            await purchaseController.getDraftData(draftName);
           },
           onDelete: (draftName) async {
             try {
@@ -515,18 +546,36 @@ class _PurchasePageState extends State<PurchasePage>
                 draftId: draftName,
               );
 
+              // Remove the deleted name from the stored list too.
+              final currentList =
+              await ChallanCartStorage.getDraft(challanType);
+
+              final updatedNames = List<String>.from(
+                currentList?.draftName ?? <String>[],
+              )..remove(draftName);
+
+              await ChallanCartStorage.saveDraft(
+                DraftModel(
+                  challanType: challanType,
+                  draftName: updatedNames,
+                ),
+              );
+
               return true;
             } catch (e) {
-              debugPrint('Delete draft error: $e');
+              debugPrint('Delete supplier voucher draft error: $e');
               return false;
             }
           },
-        );
-      },
-    );
-  }
-
-  // ============================================================
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Open draft list error: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      _showSnackBar('Unable to load drafts', isError: true);
+      return null;
+    }
+  }  // ============================================================
   // HOLD DRAFT BUTTON
   // ============================================================
 
@@ -908,9 +957,7 @@ class _PurchasePageState extends State<PurchasePage>
         builder: (context, _) {
           final supplier = purchaseController.selectSupplier;
 
-          final bool isInterState =
-              supplier != null &&
-                  supplier.state.id != GlobalVars.placeOfSupplyId;
+          final bool isInterState = supplier!= null &&  supplier.state!=null && supplier.state!.id != GlobalVars.placeOfSupplyId;
 
           return Padding(
             padding: const EdgeInsets.all(18),
@@ -1044,14 +1091,55 @@ class _PurchasePageState extends State<PurchasePage>
                 // --------------------------------------------------
                 // GENERATE CHALLAN
                 // --------------------------------------------------
-
+                _isEditMode?
                 SizedBox(
                   width: double.infinity,
                   height: 42,
                   child: ElevatedButton.icon(
                     onPressed: purchaseController.isSubmitting
                         ? null
-                        : _submitChallan,
+                        : (){
+                      _submitChallan(true);
+                    },
+                    icon: purchaseController.isSubmitting
+                        ? const SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                        : const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      purchaseController.isSubmitting
+                          ? 'Updating...'
+                          : 'Update Challan',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                      const Color(0xff3B82F6),
+                      disabledBackgroundColor:
+                      const Color(0xff3B82F6),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ):
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: ElevatedButton.icon(
+                    onPressed: purchaseController.isSubmitting
+                        ? null
+                        : (){_submitChallan(false);},
                     icon: purchaseController.isSubmitting
                         ? const SizedBox(
                       width: 17,
@@ -1096,7 +1184,7 @@ class _PurchasePageState extends State<PurchasePage>
   // SUBMIT CHALLAN
   // ============================================================
 
-  void _submitChallan() {
+  Future<void> _submitChallan(bool isUpdate) async {
     if (purchaseController.isSubmitting) {
       return;
     }
@@ -1182,9 +1270,31 @@ class _PurchasePageState extends State<PurchasePage>
         );
         return;
       }
+      if (item.product!.hsnCode==null) {
+        _showSnackBar(
+          'HSN missing for item ${index + 1}',
+          isError: true,
+        );
+        return;
+      }
+
+      if (item.product?.barcode?.trim().isNotEmpty != true) {
+        _showSnackBar(
+          'Barcode missing for item ${index + 1}',
+          isError: true,
+        );
+        return;
+      }
     }
 
-    purchaseController.submitChallan();
+    var value = await purchaseController.submitChallan(isUpdate);
+
+    if(value!=null && value)
+      {
+        if(_isEditMode){
+          widget.routesController.setRoute(Routes.purchaseChallanList);
+        }
+      }
   }
 
   // ============================================================
@@ -1518,13 +1628,24 @@ class _PurchasePageState extends State<PurchasePage>
 // ============================================================================
 
 class _PageBreadcrumb extends StatelessWidget {
-  const _PageBreadcrumb();
+  final bool isEditMode;
+  final RoutesController routesController;
+  const _PageBreadcrumb( this.isEditMode, this.routesController);
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return  Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // if(isEditMode)
+        InkWell(
+            onTap: (){
+              routesController.setRoute(
+                Routes.purchaseChallanList,
+              );
+            },
+            child: Icon(Icons.arrow_back, size: 18,)),
+        SizedBox(width: 16,),
         Text(
           'Purchase',
           style: TextStyle(
@@ -1563,25 +1684,21 @@ class _PageBreadcrumb extends StatelessWidget {
 
 class _SaveDraftDialog extends StatefulWidget {
   final List<String> existingDraftNames;
-
-  final Future<bool> Function(
-      String draftName,
-      ) onSave;
+  final Future<bool> Function(String draftName) onSave;
+  final String supplierId;
 
   const _SaveDraftDialog({
     required this.existingDraftNames,
     required this.onSave,
+    required this.supplierId
   });
 
   @override
-  State<_SaveDraftDialog> createState() =>
-      _SaveDraftDialogState();
+  State<_SaveDraftDialog> createState() => _SaveDraftDialogState();
 }
 
-class _SaveDraftDialogState
-    extends State<_SaveDraftDialog> {
+class _SaveDraftDialogState extends State<_SaveDraftDialog> {
   late final TextEditingController _controller;
-
   bool _isSaving = false;
 
   @override
@@ -1599,57 +1716,37 @@ class _SaveDraftDialogState
   }
 
   void _onTextChanged() {
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   bool get _isExist {
     final name = _controller.text.trim();
-
-    if (name.isEmpty) {
-      return false;
-    }
-
-    return widget.existingDraftNames.contains(name);
+    return name.isNotEmpty && widget.existingDraftNames.contains('purchase_challan_${widget.supplierId}_$name');
   }
 
   Future<void> _save() async {
-    if (_isSaving) {
-      return;
-    }
+    if (_isSaving) return;
 
     final name = _controller.text.trim();
+    if (name.isEmpty) return;
 
-    if (name.isEmpty) {
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
     final success = await widget.onSave(name);
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (success) {
       Navigator.of(context).pop(true);
       return;
     }
 
-    setState(() {
-      _isSaving = false;
-    });
+    setState(() => _isSaving = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: Colors.red,
-        content: Text(
-          'Unable to save draft',
-        ),
+        content: Text('Unable to save draft'),
       ),
     );
   }
@@ -1668,13 +1765,8 @@ class _SaveDraftDialogState
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ------------------------------------------------------
-            // TITLE
-            // ------------------------------------------------------
-
             const Row(
               children: [
                 Icon(
@@ -1692,9 +1784,7 @@ class _SaveDraftDialogState
                 ),
               ],
             ),
-
             const SizedBox(height: 7),
-
             const Text(
               'Enter a name for this draft.',
               style: TextStyle(
@@ -1702,23 +1792,14 @@ class _SaveDraftDialogState
                 color: Colors.grey,
               ),
             ),
-
             const SizedBox(height: 18),
-
-            // ------------------------------------------------------
-            // TEXT FIELD
-            // ------------------------------------------------------
-
             TextField(
               controller: _controller,
               autofocus: true,
               enabled: !_isSaving,
-              textInputAction:
-              TextInputAction.done,
+              textInputAction: TextInputAction.done,
               onSubmitted: (_) => _save(),
-              style: const TextStyle(
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Example: Supplier March Order',
                 hintStyle: const TextStyle(
@@ -1731,30 +1812,20 @@ class _SaveDraftDialogState
                 ),
                 filled: true,
                 fillColor: const Color(0xffF8FAFC),
-                contentPadding:
-                const EdgeInsets.symmetric(
+                contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 12,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius:
-                  BorderRadius.circular(9),
-                  borderSide: BorderSide(
-                    color: Colors.grey.shade300,
-                  ),
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
-                enabledBorder:
-                OutlineInputBorder(
-                  borderRadius:
-                  BorderRadius.circular(9),
-                  borderSide: BorderSide(
-                    color: Colors.grey.shade300,
-                  ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
-                focusedBorder:
-                OutlineInputBorder(
-                  borderRadius:
-                  BorderRadius.circular(9),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
                   borderSide: const BorderSide(
                     color: Color(0xff3B82F6),
                     width: 1.3,
@@ -1762,24 +1833,14 @@ class _SaveDraftDialogState
                 ),
               ),
             ),
-
-            // ------------------------------------------------------
-            // EXISTING MESSAGE
-            // ------------------------------------------------------
-
             AnimatedSwitcher(
-              duration: const Duration(
-                milliseconds: 180,
-              ),
+              duration: const Duration(milliseconds: 180),
               child: _isExist
                   ? const Padding(
                 key: ValueKey('exists'),
-                padding: EdgeInsets.only(
-                  top: 8,
-                ),
+                padding: EdgeInsets.only(top: 8),
                 child: Row(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
                       Icons.info_outline,
@@ -1793,8 +1854,7 @@ class _SaveDraftDialogState
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.orange,
-                          fontWeight:
-                          FontWeight.w500,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -1806,62 +1866,39 @@ class _SaveDraftDialogState
                 height: 8,
               ),
             ),
-
             const SizedBox(height: 12),
-
-            // ------------------------------------------------------
-            // BUTTONS
-            // ------------------------------------------------------
-
             Row(
-              mainAxisAlignment:
-              MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 OutlinedButton(
                   onPressed: _isSaving
                       ? null
-                      : () {
-                    Navigator.of(context)
-                        .pop(false);
-                  },
+                      : () => Navigator.of(context).pop(false),
                   style: OutlinedButton.styleFrom(
-                    minimumSize:
-                    const Size(80, 36),
+                    minimumSize: const Size(80, 36),
                   ),
-                  child: const Text(
-                    'Cancel',
-                  ),
+                  child: const Text('Cancel'),
                 ),
-
                 const SizedBox(width: 8),
-
                 ElevatedButton(
-                  onPressed:
-                  _isSaving || _controller.text.trim().isEmpty
+                  onPressed: _isSaving || _controller.text.trim().isEmpty
                       ? null
                       : _save,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                    const Color(0xff2563EB),
+                    backgroundColor: const Color(0xff2563EB),
                     foregroundColor: Colors.white,
-                    minimumSize:
-                    const Size(90, 36),
+                    minimumSize: const Size(90, 36),
                   ),
                   child: _isSaving
                       ? const SizedBox(
                     width: 17,
                     height: 17,
-                    child:
-                    CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                      : Text(
-                    _isExist
-                        ? 'Overwrite'
-                        : 'Save',
-                  ),
+                      : Text(_isExist ? 'Overwrite' : 'Save'),
                 ),
               ],
             ),
@@ -1872,63 +1909,46 @@ class _SaveDraftDialogState
   }
 }
 
+
 // ============================================================================
 // DRAFT LIST DIALOG
 // ============================================================================
 
 class _DraftListDialog extends StatefulWidget {
   final List<String> draftNames;
-
-  final void Function(String draftName) onSelect;
-
-  final Future<bool> Function(
-      String draftName,
-      ) onDelete;
+  final String supplierId;
+  final Future<void> Function(String draftName) onSelect;
+  final Future<bool> Function(String draftName) onDelete;
 
   const _DraftListDialog({
     required this.draftNames,
     required this.onSelect,
     required this.onDelete,
+    required this.supplierId,
   });
 
   @override
-  State<_DraftListDialog> createState() =>
-      _DraftListDialogState();
+  State<_DraftListDialog> createState() => _DraftListDialogState();
 }
 
-class _DraftListDialogState
-    extends State<_DraftListDialog> {
+class _DraftListDialogState extends State<_DraftListDialog> {
   late List<String> _draftNames;
-
   String? _deletingDraft;
 
   @override
   void initState() {
     super.initState();
-
-    _draftNames = List<String>.from(
-      widget.draftNames,
-    );
+    _draftNames = List<String>.from(widget.draftNames);
   }
 
-  Future<void> _deleteDraft(
-      String draftName,
-      ) async {
-    if (_deletingDraft != null) {
-      return;
-    }
+  Future<void> _deleteDraft(String draftName) async {
+    if (_deletingDraft != null) return;
 
-    setState(() {
-      _deletingDraft = draftName;
-    });
+    setState(() => _deletingDraft = draftName);
 
-    final success = await widget.onDelete(
-      draftName,
-    );
+    final success = await widget.onDelete(draftName);
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (success) {
       setState(() {
@@ -1939,12 +1959,8 @@ class _DraftListDialogState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Colors.green,
-          content: Text(
-            'Draft deleted',
-          ),
-          duration: Duration(
-            seconds: 1,
-          ),
+          content: Text('Draft deleted'),
+          duration: Duration(seconds: 1),
         ),
       );
 
@@ -1955,53 +1971,37 @@ class _DraftListDialogState
       return;
     }
 
-    setState(() {
-      _deletingDraft = null;
-    });
+    setState(() => _deletingDraft = null);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: Colors.red,
-        content: Text(
-          'Unable to delete draft',
-        ),
+        content: Text('Unable to delete draft'),
       ),
     );
   }
 
-  Future<void> _confirmDelete(
-      String draftName,
-      ) async {
+  Future<void> _confirmDelete(String draftName) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text(
-            'Delete Draft?',
-          ),
+          title: const Text('Delete Draft?'),
           content: Text(
             'Delete "$draftName"? This cannot be undone.',
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-              child: const Text(
-                'Cancel',
-              ),
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
+              onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text(
-                'Delete',
-              ),
+              child: const Text('Delete'),
             ),
           ],
         );
@@ -2013,6 +2013,16 @@ class _DraftListDialogState
     }
   }
 
+  String getDraftName(String value) {
+    final prefix = 'purchase_challan_${widget.supplierId}_';
+
+    if (value.startsWith(prefix)) {
+      return value.substring(prefix.length);
+    }
+
+    return value;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -2020,9 +2030,7 @@ class _DraftListDialogState
       insetPadding: const EdgeInsets.all(20),
       child: Container(
         width: 440,
-        constraints: const BoxConstraints(
-          maxHeight: 520,
-        ),
+        constraints: const BoxConstraints(maxHeight: 520),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -2030,13 +2038,8 @@ class _DraftListDialogState
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ------------------------------------------------------
-            // HEADER
-            // ------------------------------------------------------
-
             Row(
               children: [
                 Container(
@@ -2044,8 +2047,7 @@ class _DraftListDialogState
                   height: 34,
                   decoration: BoxDecoration(
                     color: const Color(0xffFFF7ED),
-                    borderRadius:
-                    BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: const Icon(
                     Icons.folder_open_outlined,
@@ -2053,9 +2055,7 @@ class _DraftListDialogState
                     color: Color(0xffC2410C),
                   ),
                 ),
-
                 const SizedBox(width: 10),
-
                 const Expanded(
                   child: Text(
                     'Hold Drafts',
@@ -2065,17 +2065,14 @@ class _DraftListDialogState
                     ),
                   ),
                 ),
-
                 Container(
-                  padding:
-                  const EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xffF1F5F9),
-                    borderRadius:
-                    BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${_draftNames.length}',
@@ -2088,31 +2085,20 @@ class _DraftListDialogState
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
-            // ------------------------------------------------------
-            // LIST
-            // ------------------------------------------------------
-
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _draftNames.length,
-                separatorBuilder: (_, __) =>
-                const SizedBox(height: 7),
+                separatorBuilder: (_, __) => const SizedBox(height: 7),
                 itemBuilder: (context, index) {
-                  final draftName =
-                  _draftNames[index];
-
-                  final isDeleting =
-                      _deletingDraft == draftName;
+                  final draftName = _draftNames[index];
+                  final isDeleting = _deletingDraft == draftName;
 
                   return Container(
                     decoration: BoxDecoration(
                       color: const Color(0xffF8FAFC),
-                      borderRadius:
-                      BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(9),
                       border: Border.all(
                         color: const Color(0xffE2E8F0),
                       ),
@@ -2121,24 +2107,18 @@ class _DraftListDialogState
                       children: [
                         Expanded(
                           child: InkWell(
-                            borderRadius:
-                            BorderRadius.circular(9),
+                            borderRadius: BorderRadius.circular(9),
                             onTap: isDeleting
                                 ? null
-                                : () {
-                              widget.onSelect(
-                                draftName,
-                              );
+                                : () async {
+                              await widget.onSelect(draftName);
 
-                              Navigator.of(context)
-                                  .pop(
-                                draftName,
-                              );
+                              if (context.mounted) {
+                                Navigator.of(context).pop(draftName);
+                              }
                             },
                             child: Padding(
-                              padding:
-                              const EdgeInsets
-                                  .symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 11,
                               ),
@@ -2147,103 +2127,65 @@ class _DraftListDialogState
                                   Container(
                                     width: 30,
                                     height: 30,
-                                    decoration:
-                                    BoxDecoration(
-                                      color:
-                                      Colors.white,
-                                      borderRadius:
-                                      BorderRadius
-                                          .circular(
-                                        7,
-                                      ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(7),
                                     ),
                                     child: const Icon(
-                                      Icons
-                                          .description_outlined,
+                                      Icons.description_outlined,
                                       size: 17,
-                                      color: Color(
-                                        0xff64748B,
-                                      ),
+                                      color: Color(0xff64748B),
                                     ),
                                   ),
-
-                                  const SizedBox(
-                                    width: 10,
-                                  ),
-
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      draftName,
+                                      getDraftName(draftName),
                                       maxLines: 1,
-                                      overflow:
-                                      TextOverflow
-                                          .ellipsis,
-                                      style:
-                                      const TextStyle(
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
                                         fontSize: 13,
-                                        fontWeight:
-                                        FontWeight
-                                            .w600,
-                                        color: Color(
-                                          0xff1E293B,
-                                        ),
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xff1E293B),
                                       ),
                                     ),
                                   ),
-
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-
+                                  const SizedBox(width: 5),
                                   const Icon(
-                                    Icons
-                                        .chevron_right_rounded,
+                                    Icons.chevron_right_rounded,
                                     size: 19,
-                                    color: Color(
-                                      0xff94A3B8,
-                                    ),
+                                    color: Color(0xff94A3B8),
                                   ),
                                 ],
                               ),
                             ),
                           ),
                         ),
-
                         Container(
                           height: 26,
                           width: 1,
-                          color:
-                          const Color(0xffE2E8F0),
+                          color: const Color(0xffE2E8F0),
                         ),
-
                         SizedBox(
                           width: 42,
                           child: IconButton(
                             onPressed: isDeleting
                                 ? null
-                                : () {
-                              _confirmDelete(
-                                draftName,
-                              );
-                            },
+                                : () => _confirmDelete(draftName),
                             padding: EdgeInsets.zero,
-                            tooltip:
-                            'Delete draft',
+                            tooltip: 'Delete draft',
                             icon: isDeleting
                                 ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child:
-                              CircularProgressIndicator(
+                              child: CircularProgressIndicator(
                                 strokeWidth: 2,
                               ),
                             )
                                 : const Icon(
-                              Icons
-                                  .delete_outline_rounded,
+                              Icons.delete_outline_rounded,
                               size: 18,
-                              color: Colors
-                                  .redAccent,
+                              color: Colors.redAccent,
                             ),
                           ),
                         ),
@@ -2253,26 +2195,15 @@ class _DraftListDialogState
                 },
               ),
             ),
-
             const SizedBox(height: 14),
-
-            // ------------------------------------------------------
-            // FOOTER
-            // ------------------------------------------------------
-
             Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
-                  minimumSize:
-                  const Size(80, 36),
+                  minimumSize: const Size(80, 36),
                 ),
-                child: const Text(
-                  'Close',
-                ),
+                child: const Text('Close'),
               ),
             ),
           ],

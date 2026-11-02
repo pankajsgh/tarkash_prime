@@ -23,7 +23,7 @@ var storeJson =
     },
     {
       "id": "9",
-      "Store": "Jaipur ",
+      "Store": "Jaipur",
       "ShortName": "JPR"
     },
     {

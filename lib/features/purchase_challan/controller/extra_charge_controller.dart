@@ -1,10 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-
-import '../../../core/database/sql_databaes/extra_charge_database.dart';
 import '../../../core/network/api_path.dart';
 import '../../../core/network/api_repository.dart';
-import '../../../core/vars/global_vars.dart';
 import '../../../core/widget/widget_updater.dart';
 import '../../other_charges/data/model/other_charge_model.dart';
 import '../model/extra_charge_model.dart';
@@ -21,59 +18,46 @@ class ExtraChargeController extends ChangeNotifier {
 
   List<OtherChargeModel> searchCharges = [];
 
-  Future<List<OtherChargeModel>> searchOtherCharges(String search) async
-  {
+  Future<List<OtherChargeModel>> searchOtherCharges(String search) async {
     try {
       final query = search.trim();
 
-      final Map<String, String> formData = {
-        'search': query,
-      };
-      //
-      // final responseData =
-      // await ApiProvider.createServerRequest(
-      //   apiUrl: ApiPath.searchOtherCharges,
-      //   requestBody: formData,
-      //   isFormData: true,
-      // );
+      Map<String, dynamic> responseData = {};
 
-      var responseData = {};
-
-      if(GlobalVars.isOffline)
-      {
-        final List<Map<String, dynamic>> charges =
-        await ExtraChargeDatabase.instance.search(query);
-        responseData = {
-          'status': true,
-          'data':charges
+      // ============================================================
+      // ONLINE
+      // ============================================================
+        final Map<String, String> formData = {
+          'search': query,
         };
-      }
 
-// ----------------------------------------------------------------------
-// RESPONSE
-// ----------------------------------------------------------------------
+        responseData = await ApiProvider.createServerRequest(
+          apiUrl: ApiPath.searchOtherCharges,
+          requestBody: formData,
+          isFormData: true,
+        );
 
+      // ============================================================
+      // RESPONSE
+      // ============================================================
       if (responseData['status'] == true) {
-        final data =
+        final List<OtherChargeModel> data =
             (responseData['data'] as List?)
                 ?.map(
-                  (item) =>
-                  OtherChargeModel.fromJson(
-                    Map<String, dynamic>.from(item),
-                  ),
+                  (item) => OtherChargeModel.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
             )
                 .toList() ??
                 [];
 
         searchCharges = data;
-
         updateCharges.update();
 
         return data;
       }
 
       searchCharges = [];
-
       updateCharges.update();
 
       return [];
@@ -86,11 +70,17 @@ class ExtraChargeController extends ChangeNotifier {
         'Response: ${e.response?.data}',
       );
 
+      searchCharges = [];
+      updateCharges.update();
+
       return [];
     } catch (e) {
       debugPrint(
         'Search Other Charges Error: $e',
       );
+
+      searchCharges = [];
+      updateCharges.update();
 
       return [];
     }
@@ -296,37 +286,91 @@ class ExtraChargeController extends ChangeNotifier {
   }
 
   List<double> discountListsByCat() {
-    if(items.isEmpty) {
+    if (items.isEmpty) {
       return [];
     }
-    List<List<double>> lists = items.map((e)=>e.discountList).toList();
-    final length = lists.first.length;
-    return List.generate(
+
+    final List<List<double?>> lists = items
+        .map<List<double?>>(
+          (e) => List<double?>.from(e.discountList),
+    )
+        .toList();
+
+    // Get the longest discount list.
+    final int length = lists.fold<int>(
+      0,
+          (maxLength, list) =>
+      list.length > maxLength ? list.length : maxLength,
+    );
+
+    if (length == 0) {
+      return [];
+    }
+
+    return List<double>.generate(
       length,
-          (index) => lists.fold(
-        0.0,
-            (sum, list) =>
-        sum + (index < list.length ? (list[index] ?? 0.0) : 0.0),
-      ),
+          (index) {
+        return lists.fold<double>(
+          0.0,
+              (sum, list) {
+            // No value at this index.
+            if (index >= list.length) {
+              return sum;
+            }
+
+            // Null value = 0.
+            final double value = list[index] ?? 0.0;
+
+            return sum + value;
+          },
+        );
+      },
     );
   }
 
   List<double> totalChargeListsByCat() {
-    if(items.isEmpty) {
+    if (items.isEmpty) {
       return [];
     }
-    List<List<double>> lists = items.map((e)=>e.chargeList).toList();
-    final length = lists.first.length;
-    return List.generate(
-      length,
-          (index) => lists.fold(
-        0.0,
-            (sum, list) =>
-        sum + (index < list.length ? (list[index] ?? 0.0) : 0.0),
-      ),
-    );
-  }
 
+    final List<List<double>> lists = items
+        .map<List<double>>(
+          (e) => List<double>.from(e.chargeList),
+    )
+        .toList();
+
+    final int length = lists.fold<int>(
+      0,
+          (maxLength, list) =>
+      list.length > maxLength ? list.length : maxLength,
+    );
+
+    if (length == 0) {
+      return [];
+    }
+
+    final List<double> result = List.generate(
+      length,
+          (index) {
+        return lists.fold<double>(
+          0.0,
+              (sum, list) {
+            // List doesn't have this index.
+            if (index >= list.length) {
+              return sum;
+            }
+
+            // Null value = 0.
+            final double value = list[index];
+
+            return sum + value;
+          },
+        );
+      },
+    );
+
+    return result;
+  }
   // ============================================================
   // TOTAL EXTRA DISCOUNT
   // ============================================================

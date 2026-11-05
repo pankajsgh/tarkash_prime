@@ -86,3 +86,8 @@ List<double> distributeItemProportionally({
       .map((value) => value * onePart)
       .toList();
 }
+
+double round2(dynamic value) {
+  final number = double.tryParse(value.toString()) ?? 0.0;
+  return double.parse(number.toStringAsFixed(2));
+}

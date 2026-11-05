@@ -462,7 +462,7 @@ class ProductModel {
 
       'category': category,
 
-      'categoryId': categoryId,
+      'category_id': categoryId,
 
       'size': size?.toJson(),
 

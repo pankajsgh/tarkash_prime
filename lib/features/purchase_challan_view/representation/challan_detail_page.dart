@@ -11,33 +11,38 @@ import 'package:printing/printing.dart';
 import '../../purchase_challan/model/purchase_challan_detail_model.dart';
 import 'challan_pdf_servies.dart';
 
+// ------------------------------------------------------------
+// COMPACT THEME
+// ------------------------------------------------------------
+
 const Color primaryColor = Color(0xFF3267D5);
-const Color pageColor = Color(0xFFF4F6FA);
-const Color textColor = Color(0xFF172033);
-const Color mutedColor = Color(0xFF697586);
-const Color borderColor = Color(0xFFE4E8EF);
+const Color pageColor = Color(0xFFF5F7FA);
+const Color textColor = Color(0xFF263244);
+const Color mutedColor = Color(0xFF788394);
+const Color borderColor = Color(0xFFE3E8EF);
+const Color headerColor = Color(0xFFF0F3F8);
 
 const TextStyle _titleStyle = TextStyle(
-  fontSize: 16,
+  fontSize: 14,
   fontWeight: FontWeight.w600,
   color: textColor,
 );
 
 const TextStyle _sectionTitleStyle = TextStyle(
-  fontSize: 13,
+  fontSize: 12,
   fontWeight: FontWeight.w600,
   color: textColor,
 );
 
 const TextStyle _labelStyle = TextStyle(
-  fontSize: 12,
+  fontSize: 10.5,
   color: mutedColor,
 );
 
 const TextStyle _valueStyle = TextStyle(
-  fontSize: 12,
-  fontWeight: FontWeight.w500,
+  fontSize: 10.5,
   color: textColor,
+  fontWeight: FontWeight.w500,
 );
 
 class PurchaseChallanDetailsScreen extends StatefulWidget {
@@ -58,6 +63,11 @@ class PurchaseChallanDetailsScreen extends StatefulWidget {
 class _PurchaseChallanDetailsScreenState
     extends State<PurchaseChallanDetailsScreen> {
   PurchaseChallanDetails get challan => widget.challan;
+
+  bool _showDetails = true;
+  bool _showProducts = true;
+  bool _showTotals = true;
+  bool _showRemarks = true;
 
   String _str(dynamic value) => value?.toString().trim() ?? '';
 
@@ -96,20 +106,6 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
-  double _itemsTotal() {
-    return _items().fold<double>(
-      0,
-          (sum, item) => sum + _number(item.amount),
-    );
-  }
-
-  double _chargesTotal() {
-    return _charges().fold<double>(
-      0,
-          (sum, item) => sum + _number(item.amount),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,7 +116,7 @@ class _PurchaseChallanDetailsScreenState
             _topBar(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1800),
@@ -128,13 +124,12 @@ class _PurchaseChallanDetailsScreenState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _topDetails(),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 6),
                         _productSection(),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 6),
                         _chargesAndTotals(),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 6),
                         _remarks(),
-                        const SizedBox(height: 7),
                       ],
                     ),
                   ),
@@ -146,14 +141,29 @@ class _PurchaseChallanDetailsScreenState
       ),
     );
   }
+  Future<void> _previewPdf() async {
+    try {
+      final pdfBytes =
+      await PurchaseChallanPdfService().buildChallanPdf(challan);
 
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdfBytes,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to preview PDF: $e')),
+      );
+    }
+  }
   // ------------------------------------------------------------
   // TOP BAR
   // ------------------------------------------------------------
 
   Widget _topBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -164,12 +174,10 @@ class _PurchaseChallanDetailsScreenState
         children: [
           IconButton(
             onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: textColor,
-            ),
+            icon: const Icon(Icons.arrow_back_rounded, color: textColor),
           ),
           const SizedBox(width: 4),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,12 +192,280 @@ class _PurchaseChallanDetailsScreenState
               ],
             ),
           ),
+
           _smallTag('${_items().length} Items'),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: _bottomActions(),
+          const SizedBox(width: 8),
+
+          IconButton(
+            tooltip: 'Reference QR',
+            onPressed: _showReferenceQr,
+            icon: const Icon(Icons.qr_code_2, color: primaryColor),
+          ),
+
+          IconButton(
+            tooltip: 'Print Barcode Labels',
+            onPressed: _printBarcodeLabels,
+            icon: const Icon(Icons.barcode_reader, color: primaryColor),
+          ),
+
+          IconButton(
+            tooltip: 'View PDF',
+            onPressed: _viewChallanPdf,
+            icon: const Icon(Icons.picture_as_pdf, color: primaryColor),
+          ),
+
+          IconButton(
+            tooltip: 'Print Challan A4',
+            onPressed: _printChallan,
+            icon: const Icon(Icons.print, color: primaryColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  // ------------------------------------------------------------
+  // TOP DETAILS
+  // ------------------------------------------------------------
+  Widget _challanDetailPanel() {
+    final rows = <(String, String)>[
+      ('Reference', _reference()),
+      ('Challan No.', _display(challan.challanNo)),
+      ('Date', _display(challan.challanDate)),
+      ('Agent', _display(challan.agentName)),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFBFD),
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.receipt_outlined,
+                size: 14,
+                color: primaryColor,
+              ),
+              SizedBox(width: 5),
+              Text('Challan Details', style: _sectionTitleStyle),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  children: rows.map((row) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 67,
+                            child: Text(row.$1, style: _labelStyle),
+                          ),
+                          Expanded(
+                            child: Text(
+                              row.$2,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: _valueStyle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                child: InkWell(
+                  onTap: _showReferenceQr,
+                  child: Column(
+                    children: [
+                      BarcodeWidget(
+                        barcode: Barcode.qrCode(),
+                        data: _reference(),
+                        width: 80,
+                        height: 80,
+                        drawText: false,
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'VIEW QR',
+                        style: TextStyle(
+                          fontSize: 8,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _topDetails() {
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader(
+            title: 'Challan Information',
+            icon: Icons.receipt_long_outlined,
+            expanded: _showDetails,
+            onTap: () => setState(() => _showDetails = !_showDetails),
+            trailing: _smallTag('QR Available'),
+          ),
+          if (_showDetails) ...[
+            const Divider(height: 8, color: borderColor),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const gap = 7.0;
+
+                final panels = <Widget>[
+                  _challanDetailPanel(),
+                  _detailPanel(
+                    'Supplier',
+                    Icons.business_outlined,
+                    [
+                      ('Company', _display(challan.company)),
+                      ('Supplier ID', _display(challan.supplierId)),
+                      ('GSTIN', _display(challan.gstNo)),
+                    ],
+                  ),
+                  _detailPanel(
+                    'Delivery',
+                    Icons.local_shipping_outlined,
+                    [
+                      ('Store', _display(challan.storeName)),
+                      ('Transport', _display(challan.transportName)),
+                      ('LR No.', _display(challan.lrNo)),
+                      ('LR Date', _display(challan.lrDate)),
+                    ],
+                  ),
+                ];
+
+                // Desktop/tablet: three panels in one left-aligned row.
+                if (constraints.maxWidth >= 850) {
+                  final panelWidth =
+                      (constraints.maxWidth - (gap * 2)) / 3;
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (int i = 0; i < panels.length; i++) ...[
+                        SizedBox(
+                          width: panelWidth,
+                          child: panels[i],
+                        ),
+                        if (i != panels.length - 1)
+                          const SizedBox(width: gap),
+                      ],
+                    ],
+                  );
+                }
+
+                // Medium screens: two columns.
+                if (constraints.maxWidth >= 560) {
+                  final panelWidth =
+                      (constraints.maxWidth - gap) / 2;
+
+                  return Wrap(
+                    alignment: WrapAlignment.start,
+                    crossAxisAlignment: WrapCrossAlignment.start,
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: panels
+                        .map(
+                          (panel) => SizedBox(
+                        width: panelWidth,
+                        child: panel,
+                      ),
+                    )
+                        .toList(),
+                  );
+                }
+
+                // Small screens: one column, left aligned.
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (int i = 0; i < panels.length; i++) ...[
+                      SizedBox(
+                        width: constraints.maxWidth,
+                        child: panels[i],
+                      ),
+                      if (i != panels.length - 1)
+                        const SizedBox(height: gap),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  Widget _detailPanel(
+      String title,
+      IconData icon,
+      List<(String, String)> rows,
+      ) {
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFBFD),
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: primaryColor),
+              const SizedBox(width: 5),
+              Text(title, style: _sectionTitleStyle),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ...rows.map(
+                (row) => Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 67,
+                    child: Text(row.$1, style: _labelStyle),
+                  ),
+                  Expanded(
+                    child: Text(
+                      row.$2,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: _valueStyle,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -197,163 +473,57 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
-  // ------------------------------------------------------------
-  // CHALLAN, SUPPLIER, DELIVERY AND QR DETAILS
-  // ------------------------------------------------------------
-
-  Widget _topDetails() {
-    Widget detailPanel(
-        String title,
-        IconData icon,
-        List<(String, String)> rows,
-        ) {
-      return Container(
-        padding: const EdgeInsets.all(9),
-        decoration: _panelDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+  Widget _qrPanel() {
+    return InkWell(
+      onTap: _showReferenceQr,
+      borderRadius: BorderRadius.circular(5),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFBFD),
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: primaryColor),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _sectionTitleStyle.copyWith(fontSize: 12),
-                  ),
-                ),
-              ],
+            BarcodeWidget(
+              barcode: Barcode.qrCode(),
+              data: _reference(),
+              width: 65,
+              height: 65,
+              drawText: false,
             ),
-            const SizedBox(height: 6),
-            ...rows.map(
-                  (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 67,
-                      child: Text(
-                        row.$1,
-                        style: _labelStyle.copyWith(fontSize: 10),
-                      ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Reference QR',
+                    style: _sectionTitleStyle,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _reference(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: _labelStyle,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Tap to enlarge',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: primaryColor,
                     ),
-                    Expanded(
-                      child: Text(
-                        row.$2,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: _valueStyle.copyWith(fontSize: 10.5),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-      );
-    }
-
-    final panels = <Widget>[
-      detailPanel(
-        'Challan Details',
-        Icons.receipt_long,
-        [
-          ('Reference', _reference()),
-          ('Challan No.', _display(challan.challanNo)),
-          ('Date', _display(challan.challanDate)),
-          ('Agent', _display(challan.agentName)),
-        ],
       ),
-      detailPanel(
-        'Supplier',
-        Icons.business_outlined,
-        [
-          ('Company', _display(challan.company)),
-          ('Supplier ID', _display(challan.supplierId)),
-          ('GSTIN', _display(challan.gstNo)),
-        ],
-      ),
-      detailPanel(
-        'Delivery',
-        Icons.local_shipping_outlined,
-        [
-          ('Store', _display(challan.storeName)),
-          ('Transport', _display(challan.transportName)),
-          ('LR No.', _display(challan.lrNo)),
-          ('LR Date', _display(challan.lrDate)),
-        ],
-      ),
-      InkWell(
-        onTap: _showReferenceQr,
-        borderRadius: BorderRadius.circular(9),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFF),
-            border: Border.all(color: const Color(0xFFDCE6FA)),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              BarcodeWidget(
-                barcode: Barcode.qrCode(),
-                data: _reference(),
-                width: 74,
-                height: 74,
-                drawText: false,
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'REFERENCE QR',
-                style: TextStyle(fontSize: 9, color: mutedColor),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _reference(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 1050
-            ? 4
-            : constraints.maxWidth >= 560
-            ? 2
-            : 1;
-
-        const gap = 8.0;
-
-        final itemWidth = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - gap * (columns - 1)) / columns;
-
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: panels
-              .map((panel) => SizedBox(width: itemWidth, child: panel))
-              .toList(),
-        );
-      },
     );
   }
 
@@ -361,21 +531,25 @@ class _PurchaseChallanDetailsScreenState
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Reference QR Code'),
+        title: const Text(
+          'Reference QR Code',
+          style: TextStyle(fontSize: 15),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             BarcodeWidget(
               barcode: Barcode.qrCode(),
               data: _reference(),
-              width: 220,
-              height: 220,
+              width: 200,
+              height: 200,
               drawText: false,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             SelectableText(
               _reference(),
               textAlign: TextAlign.center,
+              style: _valueStyle,
             ),
           ],
         ),
@@ -422,167 +596,215 @@ class _PurchaseChallanDetailsScreenState
       'QTY',
       'RATE',
       'MRP',
-      'AMOUNT',
+      'TOTAL',
     ];
 
-    const flexes = [3, 5, 13, 9, 10, 8, 5, 4, 5, 7, 7, 8];
+    // Keep the existing product table proportions.
+    const flexes = [3, 5, 8, 9, 10, 8, 5, 4, 5, 7, 7, 8];
 
-    return Container(
-      decoration: _panelDecoration(),
+    return _panel(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const Icon(
-                  Icons.inventory_2_outlined,
-                  color: primaryColor,
-                  size: 19,
-                ),
-                const Text(
-                  'Product Details',
-                  style: _sectionTitleStyle,
-                ),
-                _smallTag('${_items().length} Products'),
-                _smallTag('Qty: ${_quantity(_totalQuantity())}'),
-              ],
+            padding: const EdgeInsets.symmetric(
+              horizontal: 9,
+              vertical: 7,
+            ),
+            child: _sectionHeader(
+              title: 'Product Details',
+              icon: Icons.inventory_2_outlined,
+              expanded: _showProducts,
+              onTap: () => setState(
+                    () => _showProducts = !_showProducts,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _smallTag('${_items().length} Products'),
+                  const SizedBox(width: 5),
+                  _smallTag('Qty: ${_quantity(_totalQuantity())}'),
+                ],
+              ),
             ),
           ),
-          const Divider(height: 1, color: borderColor),
-          if (_items().isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(
-                child: Text('No products found'),
-              ),
-            )
-          else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: 1260,
-                child: Column(
-                  children: [
-                    Container(
-                      color: const Color(0xFFF1F4F9),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: List.generate(
-                          labels.length,
-                              (i) => Expanded(
-                            flex: flexes[i],
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: Text(
-                                labels[i],
-                                textAlign: i >= 8
-                                    ? TextAlign.right
-                                    : TextAlign.left,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: mutedColor,
-                                  fontWeight: FontWeight.w700,
+          if (_showProducts) ...[
+            const Divider(height: 1, color: borderColor),
+            if (_items().isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(
+                  child: Text(
+                    'No products found',
+                    style: _labelStyle,
+                  ),
+                ),
+              )
+            else
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: 1450,
+                  child: Column(
+                    children: [
+                      Container(
+                        color: headerColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 7,
+                        ),
+                        child: Row(
+                          children: List.generate(
+                            labels.length,
+                                (i) => Expanded(
+                              flex: flexes[i],
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 3,
+                                ),
+                                child: Text(
+                                  labels[i],
+                                  textAlign: i >= 8
+                                      ? TextAlign.right
+                                      : TextAlign.left,
+                                  style: const TextStyle(
+                                    fontSize: 9.5,
+                                    color: mutedColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    ...List.generate(_items().length, (index) {
-                      final item = _items()[index];
+                      ...List.generate(_items().length, (index) {
+                        final item = _items()[index];
 
-                      final values = [
-                        '${index + 1}',
-                        '',
-                        _display(item.productName),
-                        _display(item.barcode),
-                        '${_display(item.sizeName)} / ${_display(item.colorName)}',
-                        _display(item.brand),
-                        _display(item.hsn),
-                        _display(item.gst),
-                        _quantity(item.itemQty),
-                        _money(item.itemFinalPrice),
-                        _money(item.mrp),
-                        _money(item.amount),
-                      ];
+                        final values = [
+                          '${index + 1}',
+                          '',
+                          _display(item.productName),
+                          _display(item.barcode),
+                          '${_display(item.sizeName)} / ${_display(item.colorName)}',
+                          _display(item.brand),
+                          _display(item.hsn),
+                          _display(item.gst),
+                          _quantity(item.itemQty),
+                          _money(item.itemFinalPrice),
+                          _money(item.mrp),
+                          _money(item.amount),
+                        ];
 
-                      return InkWell(
-                        onTap: () => _showProductDetails(item, index),
-                        child: Container(
-                          color: index.isEven
-                              ? Colors.white
-                              : const Color(0xFFFAFBFD),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 7,
-                          ),
-                          child: Row(
-                            children: List.generate(
-                              values.length,
-                                  (i) => Expanded(
-                                flex: flexes[i],
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: i == 1
-                                      ? Container(
-                                    height: 34,
-                                    width: 34,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F4F9),
-                                      borderRadius:
-                                      BorderRadius.circular(5),
-                                      border: Border.all(
-                                        color: borderColor,
+                        return InkWell(
+                          onTap: () => _showProductDetails(item, index),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: index.isEven
+                                  ? Colors.white
+                                  : const Color(0xFFFAFBFD),
+                              border: const Border(
+                                bottom: BorderSide(
+                                  color: borderColor,
+                                  width: 0.6,
+                                ),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
+                            child: Row(
+                              children: List.generate(
+                                values.length,
+                                    (i) => Expanded(
+                                  flex: flexes[i],
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                    ),
+                                    child: i == 1
+                                        ? Container(
+                                      height: 29,
+                                      width: 29,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: headerColor,
+                                        borderRadius:
+                                        BorderRadius.circular(3),
+                                        border: Border.all(
+                                          color: borderColor,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.image_outlined,
+                                        size: 15,
+                                        color: mutedColor,
+                                      ),
+                                    )
+                                        : Text(
+                                      values[i],
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: i >= 8
+                                          ? TextAlign.right
+                                          : TextAlign.left,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: textColor,
+                                        fontWeight: (i == 2 ||
+                                            i == 8 ||
+                                            i == 11)
+                                            ? FontWeight.w500
+                                            : FontWeight.normal,
                                       ),
                                     ),
-                                    child: const Icon(
-                                      Icons.image_outlined,
-                                      size: 17,
-                                      color: mutedColor,
-                                    ),
-                                  )
-                                      : Text(
-                                    values[i],
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: i >= 8
-                                        ? TextAlign.right
-                                        : TextAlign.left,
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      color: textColor,
-                                      fontWeight: (i == 2 ||
-                                          i == 8 ||
-                                          i == 11)
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
-                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                  ],
+                        );
+                      }),
+                    ],
+                  ),
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 9,
+                vertical: 6,
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.touch_app_outlined,
+                    size: 13,
+                    color: mutedColor,
+                  ),
+                  const SizedBox(width: 4),
+                  const Expanded(
+                    child: Text(
+                      'Tap a product row to view full details',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        color: mutedColor,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Total Qty: ${_quantity(_totalQuantity())}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ],
         ],
       ),
     );
@@ -611,63 +833,82 @@ class _PurchaseChallanDetailsScreenState
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => SafeArea(
         child: Container(
-          padding: const EdgeInsets.all(16),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.8,
+          ),
+          padding: const EdgeInsets.fromLTRB(13, 10, 13, 12),
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(
-              top: Radius.circular(16),
+              top: Radius.circular(10),
             ),
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _display(item.productName),
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(sheetContext),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 34,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: borderColor,
+                  borderRadius: BorderRadius.circular(5),
                 ),
-                Text(
+              ),
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _display(item.productName),
+                      style: _sectionTitleStyle,
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close, size: 19),
+                  ),
+                ],
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
                   'Product ${index + 1}',
                   style: _labelStyle,
                 ),
-                const SizedBox(height: 12),
-                ...details.map(
-                      (entry) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 110,
-                          child: Text(
-                            entry.$1,
-                            style: _labelStyle,
-                          ),
+              ),
+              const Divider(height: 12, color: borderColor),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: details
+                        .map(
+                          (entry) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 105,
+                              child: Text(
+                                entry.$1,
+                                style: _labelStyle,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                entry.$2,
+                                style: _valueStyle,
+                              ),
+                            ),
+                          ],
                         ),
-                        Expanded(
-                          child: Text(
-                            entry.$2,
-                            style: _valueStyle,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    )
+                        .toList(),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -675,46 +916,37 @@ class _PurchaseChallanDetailsScreenState
   }
 
   // ------------------------------------------------------------
-  // EXTRA CHARGES AND TOTALS
+  // EXTRA CHARGES AND BILL SUMMARY
   // ------------------------------------------------------------
 
-
-
   Widget _chargesAndTotals() {
-    final itemQuantity = _totalQuantity();
-
     final valueOfGoods = _number(challan.valueOfGood);
-
-
     final additionalDiscount =
     _number(challan.additionalDiscountTotal);
-
     final taxableAmount = _number(challan.taxableAmount);
-    final discount = valueOfGoods-taxableAmount-additionalDiscount;
 
+    final discount =
+        valueOfGoods - taxableAmount - additionalDiscount;
 
     final cgst = _number(challan.cgst);
     final sgst = _number(challan.sgst);
     final igst = _number(challan.igst);
-
     final additionalCharges =
     _number(challan.additionalChargeValue);
-
     final finalDiscount = _number(challan.finalDiscount);
-
     final grandTotal = _number(challan.grandTotal);
 
-    final charges = challan.extraCharge;
+    final charges = _charges();
 
-    // Extra Charges Card
-    final chargesCard = _card(
+    final chargesCard = _summaryCard(
       title: 'Extra Charges',
-      itemQuantity: charges.length.toString(),
+      icon: Icons.add_card_outlined,
+      trailing: _smallTag('${charges.length} Charges'),
       child: Column(
         children: [
           if (charges.isEmpty)
             const Padding(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.symmetric(vertical: 9),
               child: Text(
                 'No extra charges added',
                 style: _labelStyle,
@@ -724,71 +956,44 @@ class _PurchaseChallanDetailsScreenState
             ...charges.map(
                   (charge) => _amountRow(
                 _display(charge.name),
-                _money(_number(charge.amount)),
+                _money(charge.amount),
               ),
             ),
-
-          const Divider(color: borderColor),
-
-          if (additionalCharges != 0)
+          if (additionalCharges != 0) ...[
+            const Divider(height: 8, color: borderColor),
             _amountRow(
               'Total Extra Charges',
               _money(additionalCharges),
               bold: true,
             ),
+          ],
         ],
       ),
     );
 
-    // Bill Summary Card
     final summaryRows = <Widget>[
       if (valueOfGoods != 0)
-        _amountRow(
-          'Value of Goods',
-          _money(valueOfGoods),
-        ),
-
+        _amountRow('Value of Goods', _money(valueOfGoods)),
       if (discount != 0)
-        _amountRow(
-          'Discount',
-          _money(discount),
-        ),
-
+        _amountRow('Discount', _money(discount)),
       if (additionalDiscount != 0)
         _amountRow(
           'Additional Discount',
           _money(additionalDiscount),
         ),
-
       if (taxableAmount != 0)
-        _amountRow(
-          'Taxable Amount',
-          _money(taxableAmount),
-        ),
-
-      if (igst != 0)
-        _amountRow('IGST', _money(igst)),
-
-      if (sgst != 0)
-        _amountRow('SGST', _money(sgst)),
-
-      if (cgst != 0)
-        _amountRow('CGST', _money(cgst)),
-
+        _amountRow('Taxable Amount', _money(taxableAmount)),
+      if (igst != 0) _amountRow('IGST', _money(igst)),
+      if (sgst != 0) _amountRow('SGST', _money(sgst)),
+      if (cgst != 0) _amountRow('CGST', _money(cgst)),
       if (additionalCharges != 0)
         _amountRow(
           'Additional Charges',
           _money(additionalCharges),
         ),
-
       if (finalDiscount != 0)
-        _amountRow(
-          'Final Discount',
-          _money(finalDiscount),
-        ),
-
-      const Divider(color: borderColor, height: 12),
-
+        _amountRow('Final Discount', _money(finalDiscount)),
+      const Divider(height: 10, color: borderColor),
       _amountRow(
         'Grand Total',
         _money(grandTotal),
@@ -797,23 +1002,22 @@ class _PurchaseChallanDetailsScreenState
       ),
     ];
 
-    final summaryCard = _card(
+    final summaryCard = _summaryCard(
       title: 'Bill Summary',
-      itemQuantity: _quantity(itemQuantity),
+      icon: Icons.receipt_outlined,
+      trailing: _smallTag('Qty: ${_quantity(_totalQuantity())}'),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: summaryRows,
       ),
     );
 
-    // Responsive Layout
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 700) {
           return Column(
             children: [
               chargesCard,
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               summaryCard,
             ],
           );
@@ -822,53 +1026,36 @@ class _PurchaseChallanDetailsScreenState
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 5,
-              child: chargesCard,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 4,
-              child: summaryCard,
-            ),
+            Expanded(flex: 5, child: chargesCard),
+            const SizedBox(width: 7),
+            Expanded(flex: 4, child: summaryCard),
           ],
         );
       },
     );
   }
 
-
-  Widget _card({
+  Widget _summaryCard({
     required String title,
-    required String itemQuantity,
+    required IconData icon,
+    required Widget trailing,
     required Widget child,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: _panelDecoration(),
+    return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
-          SizedBox(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: _sectionTitleStyle.copyWith(fontSize: 12),
-                  ),
-                ),
-
-                Text(
-                  'Qty: ${_quantity(itemQuantity)}',
-                  style: TextStyle(fontWeight: FontWeight.w500),                ),
-              ],
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 15, color: primaryColor),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(title, style: _sectionTitleStyle),
+              ),
+              trailing,
+            ],
           ),
-          const SizedBox(height: 6),
-          const Divider(height: 1, color: borderColor),
-          const SizedBox(height: 4),
+          const Divider(height: 9, color: borderColor),
           child,
         ],
       ),
@@ -882,19 +1069,26 @@ class _PurchaseChallanDetailsScreenState
         Color valueColor = textColor,
       }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: _labelStyle),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.5,
+                color: mutedColor,
+                fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
             value,
             textAlign: TextAlign.right,
             style: TextStyle(
-              fontSize: bold ? 14 : 12,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              fontSize: bold ? 12 : 10.5,
+              fontWeight: bold ? FontWeight.w600 : FontWeight.w500,
               color: valueColor,
             ),
           ),
@@ -903,19 +1097,70 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
+  // ------------------------------------------------------------
+  // REMARKS
+  // ------------------------------------------------------------
+
   Widget _remarks() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(9),
-      decoration: _panelDecoration(),
+    final remark = _str(challan.remark);
+
+    return _panel(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Remarks', style: _sectionTitleStyle),
-          const SizedBox(height: 6),
-          Text(
-            _str(challan.remark).isEmpty ? '—' : _str(challan.remark),
-            style: _labelStyle,
+          _sectionHeader(
+            title: 'Remarks',
+            icon: Icons.notes_outlined,
+            expanded: _showRemarks,
+            onTap: () => setState(
+                  () => _showRemarks = !_showRemarks,
+            ),
+          ),
+          if (_showRemarks) ...[
+            const Divider(height: 8, color: borderColor),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                remark.isEmpty ? '—' : remark,
+                style: _labelStyle,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------
+  // SECTION HEADER
+  // ------------------------------------------------------------
+
+  Widget _sectionHeader({
+    required String title,
+    required IconData icon,
+    required bool expanded,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: primaryColor),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(title, style: _sectionTitleStyle),
+          ),
+          if (trailing != null) ...[
+            trailing,
+            const SizedBox(width: 5),
+          ],
+          Icon(
+            expanded
+                ? Icons.keyboard_arrow_up
+                : Icons.keyboard_arrow_down,
+            size: 18,
+            color: mutedColor,
           ),
         ],
       ),
@@ -923,88 +1168,13 @@ class _PurchaseChallanDetailsScreenState
   }
 
   // ------------------------------------------------------------
-  // ACTION BUTTONS
-  // ------------------------------------------------------------
-
-  Widget _bottomActions() {
-    final buttonStyle = OutlinedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-      minimumSize: Size.zero,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: const VisualDensity(horizontal: -1, vertical: -1),
-    );
-
-    return Wrap(
-      alignment: WrapAlignment.end,
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        OutlinedButton.icon(
-          onPressed: _showReferenceQr,
-          icon: const Icon(Icons.qr_code_2_rounded, size: 15),
-          label: const Text(
-            'Reference QR',
-            style: TextStyle(fontSize: 11),
-          ),
-          style: buttonStyle,
-        ),
-        OutlinedButton.icon(
-          onPressed: _printBarcodeLabels,
-          icon: const Icon(Icons.barcode_reader, size: 15),
-          label: const Text(
-            'Print Barcode Labels',
-            style: TextStyle(fontSize: 11),
-          ),
-          style: buttonStyle,
-        ),
-        OutlinedButton.icon(
-          onPressed: _viewChallanPdf,
-          icon: const Icon(Icons.picture_as_pdf_rounded, size: 15),
-          label: const Text(
-            'View PDF',
-            style: TextStyle(fontSize: 11),
-          ),
-          style: buttonStyle.copyWith(
-            foregroundColor: const WidgetStatePropertyAll(primaryColor),
-            side: const WidgetStatePropertyAll(
-              BorderSide(color: primaryColor),
-            ),
-          ),
-        ),
-        ElevatedButton.icon(
-          onPressed: _printChallan,
-          icon: const Icon(Icons.print_rounded, size: 15),
-          label: const Text(
-            'Print Challan A4',
-            style: TextStyle(fontSize: 11),
-          ),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: const VisualDensity(
-              horizontal: -1,
-              vertical: -1,
-            ),
-            backgroundColor: primaryColor,
-            foregroundColor: Colors.white,
-            elevation: 0,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ------------------------------------------------------------
-  // A4 PDF: GENERATED BY PurchaseChallanPdfService
+  // PDF PREVIEW
   // ------------------------------------------------------------
 
   Future<void> _viewChallanPdf() async {
     try {
-      final Uint8List bytes = await PurchaseChallanPdfService().buildChallanPdf(challan);
+      final Uint8List bytes =
+      await PurchaseChallanPdfService().buildChallanPdf(challan);
 
       if (!mounted) return;
 
@@ -1012,10 +1182,10 @@ class _PurchaseChallanDetailsScreenState
         context: context,
         barrierDismissible: true,
         builder: (dialogContext) => Dialog(
-          insetPadding: const EdgeInsets.all(12),
+          insetPadding: const EdgeInsets.all(10),
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: SizedBox(
             width: 1100,
@@ -1023,17 +1193,17 @@ class _PurchaseChallanDetailsScreenState
             child: Column(
               children: [
                 Container(
-                  height: 48,
-                  padding: const EdgeInsets.only(left: 14, right: 6),
-                  color: const Color(0xFF283747),
+                  height: 42,
+                  padding: const EdgeInsets.only(left: 12, right: 4),
+                  color: primaryColor,
                   child: Row(
                     children: [
                       const Icon(
-                        Icons.picture_as_pdf_rounded,
+                        Icons.picture_as_pdf_outlined,
                         color: Colors.white,
-                        size: 21,
+                        size: 18,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Purchase Challan • ${_reference()}',
@@ -1041,17 +1211,19 @@ class _PurchaseChallanDetailsScreenState
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       IconButton(
                         tooltip: 'Close',
+                        visualDensity: VisualDensity.compact,
                         onPressed: () => Navigator.pop(dialogContext),
                         icon: const Icon(
                           Icons.close,
                           color: Colors.white,
+                          size: 18,
                         ),
                       ),
                     ],
@@ -1109,7 +1281,7 @@ class _PurchaseChallanDetailsScreenState
   }
 
   // ------------------------------------------------------------
-  // BARCODE LABEL PRINTING: KEPT IN THIS SCREEN
+  // BARCODE LABEL PRINTING
   // ------------------------------------------------------------
 
   Future<void> _printBarcodeLabels() async {
@@ -1125,7 +1297,6 @@ class _PurchaseChallanDetailsScreenState
           content: Text('No product barcodes available to print'),
         ),
       );
-
       return;
     }
 
@@ -1226,23 +1397,30 @@ class _PurchaseChallanDetailsScreenState
   // COMMON UI HELPERS
   // ------------------------------------------------------------
 
-  BoxDecoration _panelDecoration() {
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: borderColor),
+  Widget _panel({
+    required Widget child,
+    EdgeInsets padding = const EdgeInsets.all(8),
+  }) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: child,
     );
   }
 
   Widget _smallTag(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 5,
+        horizontal: 6,
+        vertical: 3,
       ),
       decoration: BoxDecoration(
-        color: primaryColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
+        color: primaryColor.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(3),
       ),
       child: Text(
         text,
@@ -1250,10 +1428,34 @@ class _PurchaseChallanDetailsScreenState
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           color: primaryColor,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w500,
         ),
       ),
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 17, color: primaryColor),
+        const SizedBox(width: 9),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12),
+        ),
+      ],
     );
   }
 }

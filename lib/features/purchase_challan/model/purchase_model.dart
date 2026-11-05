@@ -48,6 +48,24 @@ class PurchaseItem {
   double wholePercent = 0.0;
   double retailPercent = 0.0;
 
+  void clearPrice(){
+    priceController.clear();
+    mrpRateController.clear();
+    retailRateController.clear();
+    wholesaleRateController.clear();
+
+    productPrice = null;
+
+    if(product!=null)
+      {
+        product!.purchaseRate = '';
+        product!.mrp = '';
+        product!.b2cPrice = '';
+        product!.b2bPrice = '';
+      }
+
+  }
+
   void setDiscountedAmount(){
     if(GlobalVars.supplierCatMargin.isNotEmpty)
    {
@@ -78,36 +96,15 @@ class PurchaseItem {
 
 
   void setMrpAmount(){
-    if(product!.mrp!=null && product!.mrp!.isNotEmpty)
-      {
-        mrpRateController.text = product!.mrp?? '';
-      }
-    else
-      {
-      mrpRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: mrpPercent).toString();
-    }
+    mrpRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: mrpPercent).toString();
   }
 
   void setWholesaleAmount(){
-    if(product!.b2bPrice!=null && product!.b2bPrice!.isNotEmpty)
-    {
-      wholesaleRateController.text = product!.b2bPrice?? '';
-    }
-    else
-    {
-      wholesaleRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: wholePercent).toString();
-    }
+    wholesaleRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: wholePercent).toString();
   }
 
   void setRetailAmount(){
-    if(product!.b2cPrice!=null && product!.b2cPrice!.isNotEmpty)
-    {
-      retailRateController.text = product!.b2cPrice?? '';
-    }
-    else
-    {
-      retailRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: retailPercent).toString();
-    }
+    retailRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: retailPercent).toString();
   }
 
   Map<String, String>? getBarcodeParm (){
@@ -157,7 +154,6 @@ class PurchaseItem {
     String tax = '0';
 
     for (final x in product!.hsnTaxSlab) {
-
 
       if (x.priceFrom.isNotEmpty && x.priceTo.isNotEmpty) {
         final from = double.tryParse(x.priceFrom) ?? 0.0;
@@ -209,17 +205,6 @@ class PurchaseItem {
     item.retailPercent = double.tryParse(
       json['retailPercent']?.toString() ?? '',
     ) ?? 0.0;
-
-    // item.mrpRateController.text = calculatePriceAfterText(price: textToDouble(item.priceController.text), discount:item.mrpPercent).toString();
-    //
-    // item.wholesaleRateController.text = calculatePriceAfterText(price: textToDouble(item.priceController.text), discount: item.wholePercent).toString();
-    //
-    // item.retailRateController.text = calculatePriceAfterText(price: textToDouble(item.priceController.text), discount: item.retailPercent).toString();
-
-    print("this is 7854");
-    print(json['mrp']?.toString() ?? '');
-
-    print(item.product!.mrp);
 
     if(item.product!=null)
     {

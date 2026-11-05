@@ -393,14 +393,6 @@ class ProductListController extends ChangeNotifier {
         'Delete Product Response: $response',
       );
 
-      // ========================================================
-      // RESPONSE VALIDATION
-      // ========================================================
-
-      if (response is! Map) {
-        errorMessage = 'Invalid server response.';
-        return false;
-      }
 
       // ========================================================
       // API SUCCESS
@@ -410,7 +402,7 @@ class ProductListController extends ChangeNotifier {
 
       final dynamic error = response['error'];
 
-      if (code == 1 && error == false) {
+      if (code == 200 && error == true) {
         // ------------------------------------------------------
         // REMOVE PRODUCT FROM LOCAL LIST
         // ------------------------------------------------------

@@ -107,7 +107,7 @@ class _ERPHeaderPageState extends State<ERPHeaderPage> {
         'Category',
         'Unit',
         'Voucher Configuration',
-        'Tax',
+        'HSN Tax Slab',
         'Other Charges',
       ],
     ),
@@ -888,7 +888,7 @@ class _ERPHeaderPageState extends State<ERPHeaderPage> {
         _navigateIfNeeded(Routes.productListScreen);
         return;
 
-      case 'Tax':
+      case 'HSN Tax Slab':
         _navigateIfNeeded(Routes.taxListScreen);
         return;
 

@@ -477,8 +477,6 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
   }
 
   Widget _transportField() {
-    print("this is good 884455");
-    print(supplierController.transports);
 
     return SizedBox(
       width: fieldWidth,

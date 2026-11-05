@@ -570,6 +570,7 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
                       if (value == null || item.product == null) return;
 
                       item.product!.size = value;
+                      item.clearPrice();
                       widget.controller.update();
 
                       _openColorDropdown(item);
@@ -608,6 +609,8 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
                       if (product == null) return;
 
                       product.color = value;
+
+                      item.clearPrice();
 
                       widget.controller.update();
 

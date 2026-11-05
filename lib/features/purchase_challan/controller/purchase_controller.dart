@@ -9,6 +9,7 @@ import '../../../core/database/local_data/product_json.dart';
 import '../../../core/database/local_store_manager.dart';
 import '../../../core/network/api_path.dart';
 import '../../../core/network/api_repository.dart';
+import '../../../core/ulitls/calculation.dart';
 import '../../../core/widget/series_field.dart';
 import '../../../core/widget/toast.dart';
 import '../../dashboard/model/store_model.dart';
@@ -102,6 +103,9 @@ class PurchaseController extends ChangeNotifier {
 
        if(purchaseChallanDetails!=null) {
          previousAPIData = response['data'];
+
+         print("this is good 7854");
+         print(previousAPIData['items']);
 
          try {
            final response = await ApiProvider.createServerRequest(
@@ -264,10 +268,6 @@ class PurchaseController extends ChangeNotifier {
       if (map['extraCharge'] is List && map['extraCharge'].isNotEmpty) {
 
         for (var x in map['extraCharge']) {
-
-          print("this is good 223333");
-          print(x);
-
           var extraCharges = ExtraChargeItemValue.fromJson(
             Map<String, dynamic>.from(x),
           );
@@ -353,7 +353,7 @@ class PurchaseController extends ChangeNotifier {
   }
 
   void setFinalDiscount(String value){
-    finalDiscount = double.tryParse(value)?? 0;
+    finalDiscount = round2(double.tryParse(value) ?? 0.0);
   }
 
   Map<String, dynamic> toDataMap() {
@@ -817,14 +817,13 @@ class PurchaseController extends ChangeNotifier {
   double valueOfTaxableGoods() {
     discountTotal = 0.0;
     for (var x = 0; x < items.length; x++) {
-      print("this is good4488");
-      print(additionalDiscountList);
       items[x].extraDiscount = x < additionalDiscountList.length ? (additionalDiscountList[x] ) : 0.0;
       items[x].extraCharge = x < additionalChargeList.length ? (additionalChargeList[x] ) : 0.0;
-
       discountTotal += items[x].getDiscount;
     }
-    return getTotalGoodsAfterDiscountValue;
+
+    return round2(getTotalGoodsAfterDiscountValue);
+
   }
 
 
@@ -841,7 +840,7 @@ class PurchaseController extends ChangeNotifier {
     for (var x in items) {
       total += x.getFinalPriceAfterDiscount;
     }
-    return total;
+    return round2(total);
   }
 
   // ============================================================
@@ -879,7 +878,7 @@ class PurchaseController extends ChangeNotifier {
       sgstValue += (item.getFinalPriceAfterDiscount* (tax / 2)) / 100;
     }
 
-    return sgstValue;
+    return round2(sgstValue);
   }
 
   double get cgst {
@@ -890,7 +889,7 @@ class PurchaseController extends ChangeNotifier {
       cgstValue += (item.getFinalPriceAfterDiscount* (tax / 2)) / 100;
     }
 
-    return cgstValue;
+    return round2(cgstValue);
   }
 
   double get igst {
@@ -900,7 +899,8 @@ class PurchaseController extends ChangeNotifier {
       igstValue += (item.getFinalPriceAfterDiscount * (tax)) / 100;
     }
 
-    return igstValue;
+    return round2(igstValue);
+
   }
 
   // ============================================================

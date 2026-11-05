@@ -59,8 +59,6 @@ class SupplierController extends ChangeNotifier {
       try{
         var data = TransportResponse.fromJson(response);
         transports = data.transportList;
-        print("hi how areyou");
-        print(transports);
         notifyListeners();
       } catch(e){
         print(e);

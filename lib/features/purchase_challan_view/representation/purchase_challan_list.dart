@@ -1873,7 +1873,7 @@ class _PurchaseChallanListPageState extends State<PurchaseChallanListPage> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: SizedBox(
-            width: 1200,
+            width: 1400,
             height: MediaQuery.of(context).size.height * 0.9,
             child: PurchaseChallanDetailsScreen(
               challan: challanDetails,

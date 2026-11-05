@@ -186,7 +186,7 @@ class PurchaseChallanDetails {
 
     return {
       'selectSupplier': selectSupplier?.toJson(),
-      'selectedSeries':series?.toJson(),
+      'selectedSeries':series.toJson(),
       'gstNo': gstNo,
       'selectedStore': selectedStore.toJson(),
       'challanNo': challanNo,
@@ -199,7 +199,7 @@ class PurchaseChallanDetails {
       'additionalDiscountTotal': additionalDiscountTotal,
       'additionalDiscountList': [],
       'items': items
-          .map((e) => PurchaseItem(id: e.id, extraCharge: double.tryParse(e.extraCharge)?? 0,  extraDiscount: double.tryParse(e.extraDiscount)?? 0, productId: e.productId, product: ProductModel(id:e.productId, name: e.productName, qty: e.itemQty, barcode: e.barcode, hsnCode:HsnCodeModel(id: e.hsn, name: ''), size: SizeModel(id: e.size, sizeName: e.sizeName), discount: e.discountPer, color: ColorModel(id: e.color, colorName: e.colorName), purchaseRate: e.amount, mrp: e.mrp , b2bPrice: e.wholesale, b2cPrice: e.retail, brand: BrandModel(id: '', name: e.brand), hsnTaxSlab: e.hsnTaxSlabs ), onChanged: () {  }).toJson())
+          .map((e) => PurchaseItem(id: e.id, extraCharge: double.tryParse(e.extraCharge)?? 0,  extraDiscount: double.tryParse(e.extraDiscount)?? 0, productId: e.productId, product: ProductModel(id:e.productId, categoryId: e.categoryId, name: e.productName, qty: e.itemQty, barcode: e.barcode, hsnCode:HsnCodeModel(id: e.hsn, name: ''), size: SizeModel(id: e.size, sizeName: e.sizeName), discount: e.discountPer, color: ColorModel(id: e.color, colorName: e.colorName), purchaseRate: e.amount, mrp: e.mrp , b2bPrice: e.wholesale, b2cPrice: e.retail, brand: BrandModel(id: '', name: e.brand), hsnTaxSlab: e.hsnTaxSlabs ), onChanged: () {  }).toJson())
           .toList(),
       'additionalChargeValue': additionalChargeValue,
       'extraCharge': extraCharge
@@ -230,6 +230,7 @@ class PurchaseChallanItem {
 
   final String productId;
   final String productName;
+  final String categoryId;
 
   final String amount;
   final String mrp;
@@ -260,6 +261,7 @@ class PurchaseChallanItem {
     required this.challanId,
     required this.productId,
     required this.productName,
+    required this.categoryId,
     required this.amount,
     required this.mrp,
     required this.wholesale,
@@ -292,6 +294,9 @@ class PurchaseChallanItem {
 
       productName:
       json['product_name']?.toString() ?? '',
+
+        categoryId: json['category_id']?.toString() ?? '',
+
       brand: json['brand_name']?.toString() ?? '',
 
       amount:
@@ -347,6 +352,7 @@ class PurchaseChallanItem {
 
       'product_id': productId,
       'product_name': productName,
+      'category_id': categoryId,
       'brand_name': brand,
 
       'amount': amount,

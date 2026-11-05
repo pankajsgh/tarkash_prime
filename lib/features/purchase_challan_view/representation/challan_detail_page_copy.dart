@@ -1,3 +1,4 @@
+
 import 'dart:typed_data';
 
 import 'package:barcode_widget/barcode_widget.dart';
@@ -8,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../purchase_challan/model/purchase_challan_detail_model.dart';
+import 'challan_pdf_servies.dart';
 
 const Color primaryColor = Color(0xFF3267D5);
 const Color pageColor = Color(0xFFF4F6FA);
@@ -16,13 +18,13 @@ const Color mutedColor = Color(0xFF697586);
 const Color borderColor = Color(0xFFE4E8EF);
 
 const TextStyle _titleStyle = TextStyle(
-  fontSize: 17,
+  fontSize: 16,
   fontWeight: FontWeight.w600,
   color: textColor,
 );
 
 const TextStyle _sectionTitleStyle = TextStyle(
-  fontSize: 14,
+  fontSize: 13,
   fontWeight: FontWeight.w600,
   color: textColor,
 );
@@ -40,10 +42,12 @@ const TextStyle _valueStyle = TextStyle(
 
 class PurchaseChallanDetailsScreen extends StatefulWidget {
   final PurchaseChallanDetails challan;
+  final String title;
 
   const PurchaseChallanDetailsScreen({
     super.key,
     required this.challan,
+    required this.title,
   });
 
   @override
@@ -64,10 +68,8 @@ class _PurchaseChallanDetailsScreenState
         0;
   }
 
-// Monetary values always show two decimal places.
   String _money(dynamic value) => _number(value).toStringAsFixed(2);
 
-// Quantities display as integers: 1, 2, 10 instead of 1.00, 2.00, 10.00.
   String _quantity(dynamic value) => _number(value).toInt().toString();
 
   String _display(dynamic value) {
@@ -126,14 +128,13 @@ class _PurchaseChallanDetailsScreenState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _topDetails(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 7),
                         _productSection(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 7),
                         _chargesAndTotals(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 7),
                         _remarks(),
-                        const SizedBox(height: 10),
-                        _bottomActions(),
+                        const SizedBox(height: 7),
                       ],
                     ),
                   ),
@@ -146,9 +147,13 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
+  // ------------------------------------------------------------
+  // TOP BAR
+  // ------------------------------------------------------------
+
   Widget _topBar() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -169,10 +174,7 @@ class _PurchaseChallanDetailsScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Purchase Challan',
-                  style: _titleStyle,
-                ),
+                Text(widget.title, style: _titleStyle),
                 Text(
                   'Reference: ${_reference()}',
                   maxLines: 1,
@@ -183,10 +185,21 @@ class _PurchaseChallanDetailsScreenState
             ),
           ),
           _smallTag('${_items().length} Items'),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: _bottomActions(),
+            ),
+          ),
         ],
       ),
     );
   }
+
+  // ------------------------------------------------------------
+  // CHALLAN, SUPPLIER, DELIVERY AND QR DETAILS
+  // ------------------------------------------------------------
 
   Widget _topDetails() {
     Widget detailPanel(
@@ -195,35 +208,46 @@ class _PurchaseChallanDetailsScreenState
         List<(String, String)> rows,
         ) {
       return Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(9),
         decoration: _panelDecoration(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
-                Icon(icon, size: 18, color: primaryColor),
-                const SizedBox(width: 7),
-                Text(title, style: _sectionTitleStyle),
+                Icon(icon, size: 16, color: primaryColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _sectionTitleStyle.copyWith(fontSize: 12),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             ...rows.map(
                   (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(
-                      width: 90,
-                      child: Text(row.$1, style: _labelStyle),
+                      width: 67,
+                      child: Text(
+                        row.$1,
+                        style: _labelStyle.copyWith(fontSize: 10),
+                      ),
                     ),
                     Expanded(
                       child: Text(
                         row.$2,
-                        style: _valueStyle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        style: _valueStyle.copyWith(fontSize: 10.5),
                       ),
                     ),
                   ],
@@ -235,123 +259,99 @@ class _PurchaseChallanDetailsScreenState
       );
     }
 
+    final panels = <Widget>[
+      detailPanel(
+        'Challan Details',
+        Icons.receipt_long,
+        [
+          ('Reference', _reference()),
+          ('Challan No.', _display(challan.challanNo)),
+          ('Date', _display(challan.challanDate)),
+          ('Agent', _display(challan.agentName)),
+        ],
+      ),
+      detailPanel(
+        'Supplier',
+        Icons.business_outlined,
+        [
+          ('Company', _display(challan.company)),
+          ('Supplier ID', _display(challan.supplierId)),
+          ('GSTIN', _display(challan.gstNo)),
+        ],
+      ),
+      detailPanel(
+        'Delivery',
+        Icons.local_shipping_outlined,
+        [
+          ('Store', _display(challan.storeName)),
+          ('Transport', _display(challan.transportName)),
+          ('LR No.', _display(challan.lrNo)),
+          ('LR Date', _display(challan.lrDate)),
+        ],
+      ),
+      InkWell(
+        onTap: _showReferenceQr,
+        borderRadius: BorderRadius.circular(9),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFF),
+            border: Border.all(color: const Color(0xFFDCE6FA)),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BarcodeWidget(
+                barcode: Barcode.qrCode(),
+                data: _reference(),
+                width: 74,
+                height: 74,
+                drawText: false,
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'REFERENCE QR',
+                style: TextStyle(fontSize: 9, color: mutedColor),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _reference(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 700;
+        final columns = constraints.maxWidth >= 1050
+            ? 4
+            : constraints.maxWidth >= 560
+            ? 2
+            : 1;
 
-        final challanPanel = detailPanel(
-          'Challan Details',
-          Icons.receipt_long,
-          [
-            ('Reference', _reference()),
-            ('Challan No.', _display(challan.challanNo)),
-            ('Date', _display(challan.challanDate)),
-            ('LR No.', _display(challan.lrNo)),
-            ('LR Date', _display(challan.lrDate)),
-          ],
-        );
+        const gap = 8.0;
 
-        final supplierPanel = detailPanel(
-          'Supplier',
-          Icons.business_outlined,
-          [
-            ('Company', _display(challan.company)),
-            ('Supplier ID', _display(challan.supplierId)),
-            ('GSTIN', _display(challan.gstNo)),
-          ],
-        );
+        final itemWidth = columns == 1
+            ? constraints.maxWidth
+            : (constraints.maxWidth - gap * (columns - 1)) / columns;
 
-        final transportPanel = detailPanel(
-          'Transport',
-          Icons.local_shipping_outlined,
-          [
-            ('Store', _display(challan.storeName)),
-            ('Transport', _display(challan.transportName)),
-            ('Agent', _display(challan.agentName)),
-          ],
-        );
-
-        final qr = InkWell(
-          onTap: _showReferenceQr,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFF),
-              border: Border.all(
-                color: const Color(0xFFDCE6FA),
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              children: [
-                BarcodeWidget(
-                  barcode: Barcode.qrCode(),
-                  data: _reference(),
-                  width: 100,
-                  height: 100,
-                  drawText: false,
-                ),
-                const SizedBox(height: 5),
-                const Text(
-                  'REFERENCE QR',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: mutedColor,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _reference(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-
-        if (narrow) {
-          return Column(
-            children: [
-              challanPanel,
-              const SizedBox(height: 8),
-              supplierPanel,
-              const SizedBox(height: 8),
-              transportPanel,
-              const SizedBox(height: 8),
-              qr,
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                children: [
-                  challanPanel,
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: supplierPanel),
-                      const SizedBox(width: 8),
-                      Expanded(child: transportPanel),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(width: 145, child: qr),
-          ],
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: panels
+              .map((panel) => SizedBox(width: itemWidth, child: panel))
+              .toList(),
         );
       },
     );
@@ -405,9 +405,14 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
+  // ------------------------------------------------------------
+  // PRODUCT TABLE
+  // ------------------------------------------------------------
+
   Widget _productSection() {
     const labels = [
       '#',
+      'PHOTO',
       'PRODUCT',
       'BARCODE',
       'SIZE / COLOR',
@@ -417,10 +422,10 @@ class _PurchaseChallanDetailsScreenState
       'QTY',
       'RATE',
       'MRP',
-      'AMOUNT',
+      'TOTAL',
     ];
 
-    const flexes = [3, 18, 9, 8, 8, 5, 4, 5, 7, 7, 8];
+    const flexes = [3, 5, 13, 9, 10, 8, 5, 4, 5, 7, 7, 8];
 
     return Container(
       decoration: _panelDecoration(),
@@ -460,14 +465,14 @@ class _PurchaseChallanDetailsScreenState
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: 1250,
+                width: 1260,
                 child: Column(
                   children: [
                     Container(
                       color: const Color(0xFFF1F4F9),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 11,
+                        vertical: 8,
                       ),
                       child: Row(
                         children: List.generate(
@@ -480,7 +485,7 @@ class _PurchaseChallanDetailsScreenState
                               ),
                               child: Text(
                                 labels[i],
-                                textAlign: i >= 7
+                                textAlign: i >= 8
                                     ? TextAlign.right
                                     : TextAlign.left,
                                 style: const TextStyle(
@@ -499,6 +504,7 @@ class _PurchaseChallanDetailsScreenState
 
                       final values = [
                         '${index + 1}',
+                        '',
                         _display(item.productName),
                         _display(item.barcode),
                         '${_display(item.sizeName)} / ${_display(item.colorName)}',
@@ -506,9 +512,9 @@ class _PurchaseChallanDetailsScreenState
                         _display(item.hsn),
                         _display(item.gst),
                         _quantity(item.itemQty),
-                        _money(item.itemFinalPrice),
-                        _money(item.mrp),
                         _money(item.amount),
+                        _money(item.mrp),
+                        _money(item.itemFinalPrice),
                       ];
 
                       return InkWell(
@@ -519,7 +525,7 @@ class _PurchaseChallanDetailsScreenState
                               : const Color(0xFFFAFBFD),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
-                            vertical: 12,
+                            vertical: 7,
                           ),
                           child: Row(
                             children: List.generate(
@@ -530,19 +536,38 @@ class _PurchaseChallanDetailsScreenState
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 4,
                                   ),
-                                  child: Text(
+                                  child: i == 1
+                                      ? Container(
+                                    height: 34,
+                                    width: 34,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F4F9),
+                                      borderRadius:
+                                      BorderRadius.circular(5),
+                                      border: Border.all(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.image_outlined,
+                                      size: 17,
+                                      color: mutedColor,
+                                    ),
+                                  )
+                                      : Text(
                                     values[i],
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    textAlign: i >= 7
+                                    textAlign: i >= 8
                                         ? TextAlign.right
                                         : TextAlign.left,
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       color: textColor,
-                                      fontWeight: (i == 1 ||
-                                          i == 7 ||
-                                          i == 10)
+                                      fontWeight: (i == 2 ||
+                                          i == 8 ||
+                                          i == 11)
                                           ? FontWeight.w600
                                           : FontWeight.normal,
                                     ),
@@ -649,12 +674,45 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
+  // ------------------------------------------------------------
+  // EXTRA CHARGES AND TOTALS
+  // ------------------------------------------------------------
+
+
+
   Widget _chargesAndTotals() {
+    final itemQuantity = _totalQuantity();
+
+    final valueOfGoods = _number(challan.valueOfGood);
+
+
+    final additionalDiscount =
+    _number(challan.additionalDiscountTotal);
+
+    final taxableAmount = _number(challan.taxableAmount);
+    final discount = valueOfGoods-taxableAmount-additionalDiscount;
+
+
+    final cgst = _number(challan.cgst);
+    final sgst = _number(challan.sgst);
+    final igst = _number(challan.igst);
+
+    final additionalCharges =
+    _number(challan.additionalChargeValue);
+
+    final finalDiscount = _number(challan.finalDiscount);
+
+    final grandTotal = _number(challan.grandTotal);
+
+    final charges = challan.extraCharge;
+
+    // Extra Charges Card
     final chargesCard = _card(
       title: 'Extra Charges',
+      itemQuantity: charges.length.toString(),
       child: Column(
         children: [
-          if (_charges().isEmpty)
+          if (charges.isEmpty)
             const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
@@ -663,60 +721,92 @@ class _PurchaseChallanDetailsScreenState
               ),
             )
           else
-            ..._charges().map(
+            ...charges.map(
                   (charge) => _amountRow(
                 _display(charge.name),
-                _money(charge.amount),
+                _money(_number(charge.amount)),
               ),
             ),
+
           const Divider(color: borderColor),
-          _amountRow(
-            'Total Extra Charges',
-            _money(_chargesTotal()),
-            bold: true,
-          ),
+
+          if (additionalCharges != 0)
+            _amountRow(
+              'Total Extra Charges',
+              _money(additionalCharges),
+              bold: true,
+            ),
         ],
       ),
     );
+
+    // Bill Summary Card
+    final summaryRows = <Widget>[
+      if (valueOfGoods != 0)
+        _amountRow(
+          'Value of Goods',
+          _money(valueOfGoods),
+        ),
+
+      if (discount != 0)
+        _amountRow(
+          'Discount',
+          _money(discount),
+        ),
+
+      if (additionalDiscount != 0)
+        _amountRow(
+          'Additional Discount',
+          _money(additionalDiscount),
+        ),
+
+      if (taxableAmount != 0)
+        _amountRow(
+          'Taxable Amount',
+          _money(taxableAmount),
+        ),
+
+      if (igst != 0)
+        _amountRow('IGST', _money(igst)),
+
+      if (sgst != 0)
+        _amountRow('SGST', _money(sgst)),
+
+      if (cgst != 0)
+        _amountRow('CGST', _money(cgst)),
+
+      if (additionalCharges != 0)
+        _amountRow(
+          'Additional Charges',
+          _money(additionalCharges),
+        ),
+
+      if (finalDiscount != 0)
+        _amountRow(
+          'Final Discount',
+          _money(finalDiscount),
+        ),
+
+      const Divider(color: borderColor, height: 12),
+
+      _amountRow(
+        'Grand Total',
+        _money(grandTotal),
+        bold: true,
+        valueColor: primaryColor,
+      ),
+    ];
 
     final summaryCard = _card(
-      title: 'Total Summary',
+      title: 'Bill Summary',
+      itemQuantity: _quantity(itemQuantity),
       child: Column(
-        children: [
-          _amountRow(
-            'Item Quantity',
-            _quantity(_totalQuantity()),
-          ),
-          _amountRow(
-            'Item Amount',
-            _money(_itemsTotal()),
-          ),
-          _amountRow(
-            'Extra Charges',
-            _money(_chargesTotal()),
-          ),
-          const Divider(color: borderColor),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Tax Breakdown',
-              style: _labelStyle,
-            ),
-          ),
-          _amountRow('CGST', _money(challan.cgst)),
-          _amountRow('SGST', _money(challan.sgst)),
-          _amountRow('IGST', _money(challan.igst)),
-          const Divider(color: borderColor),
-          _amountRow(
-            'Grand Total',
-            _money(challan.grandTotal),
-            bold: true,
-            valueColor: primaryColor,
-          ),
-        ],
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: summaryRows,
       ),
     );
 
+    // Responsive Layout
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 700) {
@@ -732,27 +822,51 @@ class _PurchaseChallanDetailsScreenState
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 5, child: chargesCard),
+            Expanded(
+              flex: 5,
+              child: chargesCard,
+            ),
             const SizedBox(width: 10),
-            Expanded(flex: 4, child: summaryCard),
+            Expanded(
+              flex: 4,
+              child: summaryCard,
+            ),
           ],
         );
       },
     );
   }
 
+
   Widget _card({
     required String title,
+    required String itemQuantity,
     required Widget child,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: _sectionTitleStyle),
-          const SizedBox(height: 10),
+
+          SizedBox(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: _sectionTitleStyle.copyWith(fontSize: 12),
+                  ),
+                ),
+
+                Text(
+                  'Qty: ${_quantity(itemQuantity)}',
+                  style: TextStyle(fontWeight: FontWeight.w500),                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
           const Divider(height: 1, color: borderColor),
           const SizedBox(height: 4),
           child,
@@ -768,7 +882,7 @@ class _PurchaseChallanDetailsScreenState
         Color valueColor = textColor,
       }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Expanded(
@@ -792,20 +906,15 @@ class _PurchaseChallanDetailsScreenState
   Widget _remarks() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(9),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Remarks',
-            style: _sectionTitleStyle,
-          ),
+          const Text('Remarks', style: _sectionTitleStyle),
           const SizedBox(height: 6),
           Text(
-            _str(challan.remark).isEmpty
-                ? '—'
-                : _str(challan.remark),
+            _str(challan.remark).isEmpty ? '—' : _str(challan.remark),
             style: _labelStyle,
           ),
         ],
@@ -813,48 +922,73 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
+  // ------------------------------------------------------------
+  // ACTION BUTTONS
+  // ------------------------------------------------------------
+
   Widget _bottomActions() {
+    final buttonStyle = OutlinedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      minimumSize: Size.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: const VisualDensity(horizontal: -1, vertical: -1),
+    );
+
     return Wrap(
       alignment: WrapAlignment.end,
-      spacing: 9,
-      runSpacing: 9,
+      spacing: 8,
+      runSpacing: 8,
       children: [
         OutlinedButton.icon(
           onPressed: _showReferenceQr,
-          icon: const Icon(
-            Icons.qr_code_2_rounded,
-            size: 18,
+          icon: const Icon(Icons.qr_code_2_rounded, size: 15),
+          label: const Text(
+            'Reference QR',
+            style: TextStyle(fontSize: 11),
           ),
-          label: const Text('Reference QR'),
+          style: buttonStyle,
         ),
         OutlinedButton.icon(
           onPressed: _printBarcodeLabels,
-          icon: const Icon(
-            Icons.barcode_reader,
-            size: 18,
+          icon: const Icon(Icons.barcode_reader, size: 15),
+          label: const Text(
+            'Print Barcode Labels',
+            style: TextStyle(fontSize: 11),
           ),
-          label: const Text('Print Barcode Labels'),
+          style: buttonStyle,
         ),
         OutlinedButton.icon(
           onPressed: _viewChallanPdf,
-          icon: const Icon(
-            Icons.picture_as_pdf_rounded,
-            size: 18,
+          icon: const Icon(Icons.picture_as_pdf_rounded, size: 15),
+          label: const Text(
+            'View PDF',
+            style: TextStyle(fontSize: 11),
           ),
-          label: const Text('View PDF'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: primaryColor,
-            side: const BorderSide(color: primaryColor),
+          style: buttonStyle.copyWith(
+            foregroundColor: const WidgetStatePropertyAll(primaryColor),
+            side: const WidgetStatePropertyAll(
+              BorderSide(color: primaryColor),
+            ),
           ),
         ),
         ElevatedButton.icon(
           onPressed: _printChallan,
-          icon: const Icon(
-            Icons.print_rounded,
-            size: 18,
+          icon: const Icon(Icons.print_rounded, size: 15),
+          label: const Text(
+            'Print Challan A4',
+            style: TextStyle(fontSize: 11),
           ),
-          label: const Text('Print Challan A4'),
           style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: const VisualDensity(
+              horizontal: -1,
+              vertical: -1,
+            ),
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
             elevation: 0,
@@ -864,655 +998,13 @@ class _PurchaseChallanDetailsScreenState
     );
   }
 
-// Both PDF preview and printing use these exact PDF bytes.
-  Future<Uint8List> _buildChallanPdf() async {
-    final pdf = pw.Document();
-
-    const navy = PdfColor.fromInt(0xFF283747);
-    const accent = PdfColor.fromInt(0xFF47718D);
-    const paleBlue = PdfColor.fromInt(0xFFEDF3F7);
-    const lightGrey = PdfColor.fromInt(0xFFF7F9FB);
-    const border = PdfColor.fromInt(0xFFDCE3E9);
-    const grey = PdfColor.fromInt(0xFF78838D);
-    const black = PdfColor.fromInt(0xFF303943);
-    const white = PdfColors.white;
-
-    final items = _items();
-    final charges = _charges();
-
-    pw.Widget sectionHeading(
-        String title, {
-          String? trailing,
-        }) {
-      return pw.Container(
-        width: double.infinity,
-        padding: const pw.EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 7,
-        ),
-        decoration: pw.BoxDecoration(
-          color: paleBlue,
-          borderRadius: pw.BorderRadius.circular(5),
-        ),
-        child: pw.Row(
-          children: [
-            pw.Expanded(
-              child: pw.Text(
-                title,
-                style: pw.TextStyle(
-                  fontSize: 9,
-                  fontWeight: pw.FontWeight.bold,
-                  color: navy,
-                ),
-              ),
-            ),
-            if (trailing != null)
-              pw.Text(
-                trailing,
-                style: pw.TextStyle(
-                  fontSize: 7,
-                  color: grey,
-                ),
-              ),
-          ],
-        ),
-      );
-    }
-
-    pw.Widget detailCard(
-        String title,
-        List<(String, String)> details,
-        ) {
-      return pw.Container(
-        decoration: pw.BoxDecoration(
-          color: white,
-          border: pw.Border.all(
-            color: border,
-            width: 0.6,
-          ),
-          borderRadius: pw.BorderRadius.circular(4),
-        ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            sectionHeading(title),
-            pw.Padding(
-              padding: const pw.EdgeInsets.fromLTRB(8, 4, 8, 5),
-              child: pw.Column(
-                children: details.asMap().entries.map((entry) {
-                  final label = entry.value.$1;
-                  final value = entry.value.$2.trim().isEmpty
-                      ? '-'
-                      : entry.value.$2;
-
-                  return pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 3),
-                    decoration: entry.key == details.length - 1
-                        ? null
-                        : const pw.BoxDecoration(
-                      border: pw.Border(
-                        bottom: pw.BorderSide(
-                          color: lightGrey,
-                          width: 0.6,
-                        ),
-                      ),
-                    ),
-                    child: pw.Row(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.SizedBox(
-                          width: 65,
-                          child: pw.Text(
-                            label,
-                            style: const pw.TextStyle(
-                              fontSize: 7,
-                              color: grey,
-                            ),
-                          ),
-                        ),
-                        pw.SizedBox(width: 5),
-                        pw.Expanded(
-                          child: pw.Text(
-                            value,
-                            style: const pw.TextStyle(
-                              fontSize: 7.5,
-                              color: black,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    pw.Widget chargeRow(String label, String amount) {
-      return pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 3),
-        child: pw.Row(
-          children: [
-            pw.Expanded(
-              child: pw.Text(
-                label,
-                style: const pw.TextStyle(
-                  fontSize: 7.8,
-                  color: grey,
-                ),
-              ),
-            ),
-            pw.Text(
-              amount,
-              style: const pw.TextStyle(
-                fontSize: 8,
-                color: black,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    pw.Widget totalRow(
-        String label,
-        String amount, {
-          bool highlight = false,
-        }) {
-      return pw.Container(
-        padding: const pw.EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 5,
-        ),
-        decoration: pw.BoxDecoration(
-          color: highlight ? paleBlue : white,
-          border: highlight
-              ? const pw.Border(
-            top: pw.BorderSide(
-              color: border,
-              width: 0.7,
-            ),
-          )
-              : null,
-        ),
-        child: pw.Row(
-          children: [
-            pw.Expanded(
-              child: pw.Text(
-                label,
-                style: pw.TextStyle(
-                  fontSize: highlight ? 9 : 7.8,
-                  color: highlight ? navy : grey,
-                  fontWeight: highlight
-                      ? pw.FontWeight.bold
-                      : pw.FontWeight.normal,
-                ),
-              ),
-            ),
-            pw.Text(
-              amount,
-              style: pw.TextStyle(
-                fontSize: highlight ? 9 : 7.8,
-                color: highlight ? navy : black,
-                fontWeight: highlight
-                    ? pw.FontWeight.bold
-                    : pw.FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(26, 22, 26, 28),
-        theme: pw.ThemeData.withFont(
-          base: pw.Font.helvetica(),
-          bold: pw.Font.helveticaBold(),
-        ),
-        footer: (context) => pw.Container(
-          margin: const pw.EdgeInsets.only(top: 9),
-          padding: const pw.EdgeInsets.only(top: 6),
-          decoration: const pw.BoxDecoration(
-            border: pw.Border(
-              top: pw.BorderSide(
-                color: border,
-                width: 0.6,
-              ),
-            ),
-          ),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                'PURCHASE CHALLAN  •  ${_reference()}',
-                style: const pw.TextStyle(
-                  fontSize: 7,
-                  color: grey,
-                ),
-              ),
-              pw.Text(
-                'Page ${context.pageNumber} of ${context.pagesCount}',
-                style: const pw.TextStyle(
-                  fontSize: 7,
-                  color: grey,
-                ),
-              ),
-            ],
-          ),
-        ),
-        build: (context) => [
-          pw.Container(
-            padding: const pw.EdgeInsets.only(bottom: 10),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(
-                bottom: pw.BorderSide(
-                  color: border,
-                  width: 0.8,
-                ),
-              ),
-            ),
-            child: pw.Row(
-              children: [
-                pw.Container(
-                  width: 4,
-                  height: 48,
-                  decoration: pw.BoxDecoration(
-                    color: accent,
-                    borderRadius: pw.BorderRadius.circular(2),
-                  ),
-                ),
-                pw.SizedBox(width: 10),
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'PURCHASE CHALLAN',
-                        style: const pw.TextStyle(
-                          fontSize: 16,
-                          color: navy,
-                        ),
-                      ),
-                      pw.SizedBox(height: 3),
-                      pw.Text(
-                        'Goods receipt and purchase details',
-                        style: const pw.TextStyle(
-                          fontSize: 8,
-                          color: grey,
-                        ),
-                      ),
-                      pw.SizedBox(height: 7),
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 4,
-                        ),
-                        decoration: pw.BoxDecoration(
-                          color: lightGrey,
-                          border: pw.Border.all(
-                            color: border,
-                            width: 0.5,
-                          ),
-                          borderRadius: pw.BorderRadius.circular(3),
-                        ),
-                        child: pw.Text(
-                          'Reference: ${_reference()}',
-                          style: const pw.TextStyle(
-                            fontSize: 8,
-                            color: black,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(4),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(
-                      color: border,
-                      width: 0.6,
-                    ),
-                    borderRadius: pw.BorderRadius.circular(4),
-                  ),
-                  child: pw.BarcodeWidget(
-                    barcode: pw.Barcode.qrCode(),
-                    data: _reference(),
-                    width: 52,
-                    height: 52,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 10),
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(
-              horizontal: 9,
-              vertical: 9,
-            ),
-            decoration: pw.BoxDecoration(
-              color: white,
-              border: pw.Border.all(
-                color: border,
-                width: 0.6,
-              ),
-              borderRadius: pw.BorderRadius.circular(4),
-            ),
-            child: pw.Row(
-              children: [
-                _pdfSummaryValue(
-                  'CHALLAN NUMBER',
-                  _display(challan.challanNo),
-                ),
-                _pdfSummaryDivider(),
-                _pdfSummaryValue(
-                  'CHALLAN DATE',
-                  _display(challan.challanDate),
-                ),
-                _pdfSummaryDivider(),
-                _pdfSummaryValue(
-                  'TOTAL ITEMS',
-                  '${items.length}',
-                ),
-                _pdfSummaryDivider(),
-                _pdfSummaryValue(
-                  'TOTAL QUANTITY',
-                  _quantity(_totalQuantity()),
-                ),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 10),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: detailCard(
-                  'SUPPLIER DETAILS',
-                  [
-                    ('Company', _display(challan.company)),
-                    ('Supplier ID', _display(challan.supplierId)),
-                    ('GSTIN', _display(challan.gstNo)),
-                  ],
-                ),
-              ),
-              pw.SizedBox(width: 9),
-              pw.Expanded(
-                child: detailCard(
-                  'DELIVERY DETAILS',
-                  [
-                    ('Store', _display(challan.storeName)),
-                    ('Transport', _display(challan.transportName)),
-                    ('Agent', _display(challan.agentName)),
-                    ('LR Number', _display(challan.lrNo)),
-                    ('LR Date', _display(challan.lrDate)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 12),
-          sectionHeading(
-            'PRODUCT DETAILS',
-            trailing: '${items.length} products',
-          ),
-          if (items.isEmpty)
-            pw.Container(
-              width: double.infinity,
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: border),
-              ),
-              child: pw.Center(
-                child: pw.Text(
-                  'No products found',
-                  style: const pw.TextStyle(
-                    fontSize: 8,
-                    color: grey,
-                  ),
-                ),
-              ),
-            )
-          else
-            pw.TableHelper.fromTextArray(
-              headers: [
-                '#',
-                'Product',
-                'Barcode',
-                'Size',
-                'Color',
-                'HSN',
-                'GST%',
-                'Qty',
-                'Rate',
-                'MRP',
-                'Amount',
-              ],
-              data: List.generate(items.length, (index) {
-                final item = items[index];
-
-                return [
-                  '${index + 1}',
-                  _display(item.productName),
-                  _display(item.barcode),
-                  _display(item.sizeName),
-                  _display(item.colorName),
-                  _display(item.hsn),
-                  _display(item.gst),
-                  _quantity(item.itemQty),
-                  _money(item.itemFinalPrice),
-                  _money(item.mrp),
-                  _money(item.amount),
-                ];
-              }),
-              headerStyle: const pw.TextStyle(
-                fontSize: 6.5,
-                color: navy,
-              ),
-              headerDecoration: const pw.BoxDecoration(
-                color: paleBlue,
-              ),
-              cellStyle: const pw.TextStyle(
-                fontSize: 6,
-                color: black,
-              ),
-              oddRowDecoration: const pw.BoxDecoration(
-                color: lightGrey,
-              ),
-              cellPadding: const pw.EdgeInsets.symmetric(
-                horizontal: 2.5,
-                vertical: 4,
-              ),
-              border: pw.TableBorder.all(
-                color: border,
-                width: 0.4,
-              ),
-              columnWidths: {
-                0: const pw.FixedColumnWidth(17),
-                1: const pw.FlexColumnWidth(2.6),
-                2: const pw.FlexColumnWidth(1.8),
-                3: const pw.FlexColumnWidth(0.8),
-                4: const pw.FlexColumnWidth(0.8),
-                5: const pw.FlexColumnWidth(1),
-                6: const pw.FlexColumnWidth(0.65),
-                7: const pw.FlexColumnWidth(0.75),
-                8: const pw.FlexColumnWidth(1.1),
-                9: const pw.FlexColumnWidth(1),
-                10: const pw.FlexColumnWidth(1.2),
-              },
-              cellAlignments: {
-                0: pw.Alignment.center,
-                6: pw.Alignment.centerRight,
-                7: pw.Alignment.centerRight,
-                8: pw.Alignment.centerRight,
-                9: pw.Alignment.centerRight,
-                10: pw.Alignment.centerRight,
-              },
-            ),
-          pw.SizedBox(height: 12),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                flex: 5,
-                child: pw.Container(
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(
-                      color: border,
-                      width: 0.6,
-                    ),
-                    borderRadius: pw.BorderRadius.circular(4),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      sectionHeading(
-                        'EXTRA CHARGES',
-                        trailing: '${charges.length} charges',
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Column(
-                          children: [
-                            if (charges.isEmpty)
-                              pw.Container(
-                                width: double.infinity,
-                                padding: const pw.EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                                child: pw.Text(
-                                  'No extra charges',
-                                  style: const pw.TextStyle(
-                                    fontSize: 8,
-                                    color: grey,
-                                  ),
-                                ),
-                              )
-                            else
-                              ...charges.map(
-                                    (charge) => chargeRow(
-                                  _display(charge.name),
-                                  _money(charge.amount),
-                                ),
-                              ),
-                            pw.Divider(
-                              color: border,
-                              thickness: 0.5,
-                            ),
-                            chargeRow(
-                              'Total Extra Charges',
-                              _money(_chargesTotal()),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              pw.SizedBox(width: 9),
-              pw.Expanded(
-                flex: 4,
-                child: pw.Container(
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(
-                      color: border,
-                      width: 0.6,
-                    ),
-                    borderRadius: pw.BorderRadius.circular(4),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      sectionHeading('TOTAL SUMMARY'),
-                      totalRow(
-                        'Item Quantity',
-                        _quantity(_totalQuantity()),
-                      ),
-                      totalRow(
-                        'Item Amount',
-                        _money(_itemsTotal()),
-                      ),
-                      totalRow(
-                        'Extra Charges',
-                        _money(_chargesTotal()),
-                      ),
-                      totalRow('CGST', _money(challan.cgst)),
-                      totalRow('SGST', _money(challan.sgst)),
-                      totalRow('IGST', _money(challan.igst)),
-                      totalRow(
-                        'Grand Total',
-                        _money(challan.grandTotal),
-                        highlight: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 10),
-          pw.Container(
-            width: double.infinity,
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(
-                color: border,
-                width: 0.6,
-              ),
-              borderRadius: pw.BorderRadius.circular(4),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                sectionHeading('REMARKS'),
-                pw.Padding(
-                  padding: const pw.EdgeInsets.all(8),
-                  child: pw.Text(
-                    _str(challan.remark).isEmpty
-                        ? '-'
-                        : _str(challan.remark),
-                    style: const pw.TextStyle(
-                      fontSize: 8,
-                      color: black,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 30),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
-            children: [
-              pw.Expanded(
-                child: _pdfSignature('Prepared By'),
-              ),
-              pw.SizedBox(width: 20),
-              pw.Expanded(
-                child: _pdfSignature('Checked By'),
-              ),
-              pw.SizedBox(width: 20),
-              pw.Expanded(
-                child: _pdfSignature('Authorized Signatory'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    return pdf.save();
-  }
+  // ------------------------------------------------------------
+  // A4 PDF: GENERATED BY PurchaseChallanPdfService
+  // ------------------------------------------------------------
 
   Future<void> _viewChallanPdf() async {
     try {
-      final bytes = await _buildChallanPdf();
+      final Uint8List bytes = await PurchaseChallanPdfService().buildChallanPdf(challan);
 
       if (!mounted) return;
 
@@ -1532,10 +1024,7 @@ class _PurchaseChallanDetailsScreenState
               children: [
                 Container(
                   height: 48,
-                  padding: const EdgeInsets.only(
-                    left: 14,
-                    right: 6,
-                  ),
+                  padding: const EdgeInsets.only(left: 14, right: 6),
                   color: const Color(0xFF283747),
                   child: Row(
                     children: [
@@ -1598,7 +1087,10 @@ class _PurchaseChallanDetailsScreenState
 
   Future<void> _printChallan() async {
     try {
-      final bytes = await _buildChallanPdf();
+      final Uint8List bytes =
+      await PurchaseChallanPdfService().buildChallanPdf(challan);
+
+      if (!mounted) return;
 
       await Printing.layoutPdf(
         onLayout: (_) async => bytes,
@@ -1616,63 +1108,9 @@ class _PurchaseChallanDetailsScreenState
     }
   }
 
-  pw.Widget _pdfSignature(String label) {
-    return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(horizontal: 8),
-      padding: const pw.EdgeInsets.only(top: 38),
-      child: pw.Column(
-        children: [
-          pw.Container(
-            height: 0.7,
-            color: const PdfColor.fromInt(0xFF9AA5AE),
-          ),
-          pw.SizedBox(height: 7),
-          pw.Text(
-            label,
-            textAlign: pw.TextAlign.center,
-            style: const pw.TextStyle(
-              fontSize: 8,
-              color: PdfColor.fromInt(0xFF303943),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _pdfSummaryValue(String label, String value) {
-    return pw.Expanded(
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            label,
-            style: const pw.TextStyle(
-              fontSize: 6.5,
-              color: PdfColor.fromInt(0xFF78838D),
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            value,
-            style: const pw.TextStyle(
-              fontSize: 8.5,
-              color: PdfColor.fromInt(0xFF303943),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _pdfSummaryDivider() {
-    return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(horizontal: 6),
-      width: 0.5,
-      height: 25,
-      color: const PdfColor.fromInt(0xFFDCE3E9),
-    );
-  }
+  // ------------------------------------------------------------
+  // BARCODE LABEL PRINTING: KEPT IN THIS SCREEN
+  // ------------------------------------------------------------
 
   Future<void> _printBarcodeLabels() async {
     final validItems = _items()
@@ -1764,9 +1202,14 @@ class _PurchaseChallanDetailsScreenState
     }
 
     try {
+      final bytes = await pdf.save();
+
+      if (!mounted) return;
+
       await Printing.layoutPdf(
-        onLayout: (_) async => pdf.save(),
+        onLayout: (_) async => bytes,
         name: 'Barcode_Labels_${_reference()}.pdf',
+        format: PdfPageFormat.a4,
       );
     } catch (e) {
       if (!mounted) return;
@@ -1778,6 +1221,10 @@ class _PurchaseChallanDetailsScreenState
       );
     }
   }
+
+  // ------------------------------------------------------------
+  // COMMON UI HELPERS
+  // ------------------------------------------------------------
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(

@@ -41,7 +41,7 @@ class StockReportController extends ChangeNotifier {
 
   int get totalRecords => _items.length;
 
-  double get totalStock =>
+  int get totalStock =>
       _items.fold(0, (sum, item) => sum + item.totalStocks);
 
   int get totalEntries =>

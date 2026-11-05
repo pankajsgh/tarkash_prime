@@ -239,9 +239,9 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
         row.priceController.text = attribute.purchasePrice;
         row.product = data;
         row.product?.qty = attribute.quantity;
+        row.quantityController.text = attribute.quantity;
         row.productId = data.id;
-        row.productPrice =
-            double.tryParse(attribute.purchasePrice) ?? 0.0;
+        row.productPrice = double.tryParse(attribute.purchasePrice) ?? 0.0;
         row.nameController.text = data.name;
         row.brandController.text = data.brand?.name ?? '';
         row.setDiscountedAmount();

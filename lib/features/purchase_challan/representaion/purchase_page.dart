@@ -1012,6 +1012,12 @@ class _PurchaseChallanPageState extends State<PurchaseChallanPage> with WidgetsB
                 ),
 
                 _summaryRow(
+                  'Discount',
+                  purchaseController.discountTotal ?? 0,
+                ),
+
+                if(purchaseController.additionalDiscountTotal>0)
+                _summaryRow(
                   'Additional Discount',
                   purchaseController.additionalDiscountTotal ?? 0,
                 ),
@@ -1234,8 +1240,7 @@ class _PurchaseChallanPageState extends State<PurchaseChallanPage> with WidgetsB
     // ----------------------------------------------------------
 
     for (int index = 0;
-    index < purchaseController.items.length;
-    index++) {
+    index < purchaseController.items.length; index++) {
       final item = purchaseController.items[index];
 
       if (item.product == null) {

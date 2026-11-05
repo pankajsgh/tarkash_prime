@@ -10,6 +10,17 @@ double calculatePriceAfterDiscount({
   return price - (price * discount / 100);
 }
 
+double calculateDiscount({
+  required double price,
+  required double discount,
+}) {
+  if (price <= 0 || discount < 0 || discount > 100) {
+    return 0;
+  }
+
+  return price * discount / 100;
+}
+
 double calculatePriceAfterText({required double price, required double discount,}) {
   return price + (price * discount / 100);
 }

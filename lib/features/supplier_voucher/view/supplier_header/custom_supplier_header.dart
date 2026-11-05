@@ -379,8 +379,6 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
 
   // Widget _supplierField() {
   //
-  //   print("this is good8877");
-  //   print(supplierController.suppliers);
   //
   //   return SizedBox(
   //     width: fieldWidth,
@@ -479,6 +477,9 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
   }
 
   Widget _transportField() {
+    print("this is good 884455");
+    print(supplierController.transports);
+
     return SizedBox(
       width: fieldWidth,
       height: fieldHeight,
@@ -487,7 +488,7 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
         value: widget.selectedTransport,
         focusNode: transportFocusNode,
         height: fieldHeight,
-        openOnFocus: false,
+        openOnFocus: true,
         borderColor: Colors.grey.shade300,
         borderRadius: 8,
         items: supplierController.transports,

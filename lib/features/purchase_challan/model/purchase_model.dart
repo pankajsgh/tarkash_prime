@@ -39,7 +39,7 @@ class PurchaseItem {
   }
 
   int get quantity => int.tryParse(quantityController.text) ?? 0;
-  double get discount => double.tryParse(discountController.text) ?? 0;
+  double get discountPercent => double.tryParse(discountController.text) ?? 0;
   double? productPrice;
   double extraDiscount = 0;
   double extraCharge = 0;
@@ -75,16 +75,39 @@ class PurchaseItem {
     }
   }
 
+
+
   void setMrpAmount(){
-    mrpRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: mrpPercent).toString();
+    if(product!.mrp!=null && product!.mrp!.isNotEmpty)
+      {
+        mrpRateController.text = product!.mrp?? '';
+      }
+    else
+      {
+      mrpRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: mrpPercent).toString();
+    }
   }
 
   void setWholesaleAmount(){
-    wholesaleRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: wholePercent).toString();
+    if(product!.b2bPrice!=null && product!.b2bPrice!.isNotEmpty)
+    {
+      wholesaleRateController.text = product!.b2bPrice?? '';
+    }
+    else
+    {
+      wholesaleRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: wholePercent).toString();
+    }
   }
 
   void setRetailAmount(){
-    retailRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: retailPercent).toString();
+    if(product!.b2cPrice!=null && product!.b2cPrice!.isNotEmpty)
+    {
+      retailRateController.text = product!.b2cPrice?? '';
+    }
+    else
+    {
+      retailRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: retailPercent).toString();
+    }
   }
 
   Map<String, String>? getBarcodeParm (){
@@ -115,8 +138,12 @@ class PurchaseItem {
   }
 
   double get getFinalPriceAfterDiscount {
-    return calculatePriceAfterDiscount(price: getItemTotalAmount - extraDiscount, discount: discount);
+    return calculatePriceAfterDiscount(price: getItemTotalAmount - extraDiscount, discount: discountPercent);
   }
+
+  double get getDiscount {
+   return calculateDiscount(price: getItemTotalAmount - extraDiscount, discount: discountPercent);
+ }
 
   String get getGST {
     if(product==null)
@@ -148,7 +175,6 @@ class PurchaseItem {
 
   factory PurchaseItem.fromJson(Map<String, dynamic> json) {
 
-
     var getProductId = json['productId']?.toString();
     ProductModel? getProduct;
     if (json['product'] != null) {
@@ -170,8 +196,7 @@ class PurchaseItem {
 
     item._itemFinalPrice = double.tryParse(
       json['itemFinalPrice']?.toString() ?? '',
-    ) ??
-        0;
+    ) ?? 0;
 
     item.mrpPercent = double.tryParse(
       json['mrpPercent']?.toString() ?? '',
@@ -179,8 +204,7 @@ class PurchaseItem {
 
     item.wholePercent = double.tryParse(
       json['wholePercent']?.toString() ?? '',
-    ) ??
-        0.0;
+    ) ?? 0.0;
 
     item.retailPercent = double.tryParse(
       json['retailPercent']?.toString() ?? '',
@@ -191,6 +215,11 @@ class PurchaseItem {
     // item.wholesaleRateController.text = calculatePriceAfterText(price: textToDouble(item.priceController.text), discount: item.wholePercent).toString();
     //
     // item.retailRateController.text = calculatePriceAfterText(price: textToDouble(item.priceController.text), discount: item.retailPercent).toString();
+
+    print("this is 7854");
+    print(json['mrp']?.toString() ?? '');
+
+    print(item.product!.mrp);
 
     if(item.product!=null)
     {
@@ -254,7 +283,7 @@ class PurchaseItem {
 
 
   void dispose() {
-    nameController.dispose();
+    nameController.dispose();;
     brandController.dispose();
     quantityController.dispose();
     priceController.dispose();

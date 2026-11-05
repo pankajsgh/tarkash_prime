@@ -678,12 +678,41 @@ class _PurchaseChallanDetailsScreenState
   // EXTRA CHARGES AND TOTALS
   // ------------------------------------------------------------
 
+
+
   Widget _chargesAndTotals() {
+    final itemQuantity = _totalQuantity();
+
+    final valueOfGoods = _number(challan.valueOfGood);
+
+
+    final additionalDiscount =
+    _number(challan.additionalDiscountTotal);
+
+    final taxableAmount = _number(challan.taxableAmount);
+    final discount = valueOfGoods-taxableAmount-additionalDiscount;
+
+
+    final cgst = _number(challan.cgst);
+    final sgst = _number(challan.sgst);
+    final igst = _number(challan.igst);
+
+    final additionalCharges =
+    _number(challan.additionalChargeValue);
+
+    final finalDiscount = _number(challan.finalDiscount);
+
+    final grandTotal = _number(challan.grandTotal);
+
+    final charges = challan.extraCharge;
+
+    // Extra Charges Card
     final chargesCard = _card(
       title: 'Extra Charges',
+      itemQuantity: charges.length.toString(),
       child: Column(
         children: [
-          if (_charges().isEmpty)
+          if (charges.isEmpty)
             const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
@@ -692,76 +721,92 @@ class _PurchaseChallanDetailsScreenState
               ),
             )
           else
-            ..._charges().map(
+            ...charges.map(
                   (charge) => _amountRow(
                 _display(charge.name),
-                _money(charge.amount),
+                _money(_number(charge.amount)),
               ),
             ),
+
           const Divider(color: borderColor),
-          _amountRow(
-            'Total Extra Charges',
-            _money(_chargesTotal()),
-            bold: true,
-          ),
+
+          if (additionalCharges != 0)
+            _amountRow(
+              'Total Extra Charges',
+              _money(additionalCharges),
+              bold: true,
+            ),
         ],
       ),
     );
 
-    final itemQuantity = _totalQuantity();
-    final itemAmount = _itemsTotal();
-    final extraCharges = _chargesTotal();
-    final cgst = _number(challan.cgst);
-    final sgst = _number(challan.sgst);
-    final igst = _number(challan.igst);
-    final grandTotal = _number(challan.grandTotal);
-    final hasTax = cgst != 0 || sgst != 0 || igst != 0;
-
+    // Bill Summary Card
     final summaryRows = <Widget>[
-      if (itemQuantity != 0)
-        _amountRow('Item Quantity', _quantity(itemQuantity)),
-      if (itemAmount != 0)
-        _amountRow('Item Amount', _money(itemAmount)),
-      if (extraCharges != 0)
-        _amountRow('Extra Charges', _money(extraCharges)),
-      if (hasTax) ...[
-        const Divider(color: borderColor, height: 8),
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text('Tax Breakdown', style: _labelStyle),
-        ),
-        if (cgst != 0) _amountRow('CGST', _money(cgst)),
-        if (sgst != 0) _amountRow('SGST', _money(sgst)),
-        if (igst != 0) _amountRow('IGST', _money(igst)),
-      ],
-      if (grandTotal != 0) ...[
-        const Divider(color: borderColor, height: 8),
+      if (valueOfGoods != 0)
         _amountRow(
-          'Grand Total',
-          _money(grandTotal),
-          bold: true,
-          valueColor: primaryColor,
+          'Value of Goods',
+          _money(valueOfGoods),
         ),
-      ],
-      if (itemQuantity == 0 &&
-          itemAmount == 0 &&
-          extraCharges == 0 &&
-          !hasTax &&
-          grandTotal == 0)
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 4),
-          child: Text('No non-zero totals', style: _labelStyle),
+
+      if (discount != 0)
+        _amountRow(
+          'Discount',
+          _money(discount),
         ),
+
+      if (additionalDiscount != 0)
+        _amountRow(
+          'Additional Discount',
+          _money(additionalDiscount),
+        ),
+
+      if (taxableAmount != 0)
+        _amountRow(
+          'Taxable Amount',
+          _money(taxableAmount),
+        ),
+
+      if (igst != 0)
+        _amountRow('IGST', _money(igst)),
+
+      if (sgst != 0)
+        _amountRow('SGST', _money(sgst)),
+
+      if (cgst != 0)
+        _amountRow('CGST', _money(cgst)),
+
+      if (additionalCharges != 0)
+        _amountRow(
+          'Additional Charges',
+          _money(additionalCharges),
+        ),
+
+      if (finalDiscount != 0)
+        _amountRow(
+          'Final Discount',
+          _money(finalDiscount),
+        ),
+
+      const Divider(color: borderColor, height: 12),
+
+      _amountRow(
+        'Grand Total',
+        _money(grandTotal),
+        bold: true,
+        valueColor: primaryColor,
+      ),
     ];
 
     final summaryCard = _card(
-      title: 'Total Summary',
+      title: 'Bill Summary',
+      itemQuantity: _quantity(itemQuantity),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: summaryRows,
       ),
     );
 
+    // Responsive Layout
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 700) {
@@ -777,17 +822,25 @@ class _PurchaseChallanDetailsScreenState
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 5, child: chargesCard),
+            Expanded(
+              flex: 5,
+              child: chargesCard,
+            ),
             const SizedBox(width: 10),
-            Expanded(flex: 4, child: summaryCard),
+            Expanded(
+              flex: 4,
+              child: summaryCard,
+            ),
           ],
         );
       },
     );
   }
 
+
   Widget _card({
     required String title,
+    required String itemQuantity,
     required Widget child,
   }) {
     return Container(
@@ -796,9 +849,22 @@ class _PurchaseChallanDetailsScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            style: _sectionTitleStyle.copyWith(fontSize: 12),
+
+          SizedBox(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: _sectionTitleStyle.copyWith(fontSize: 12),
+                  ),
+                ),
+
+                Text(
+                  'Qty: ${_quantity(itemQuantity)}',
+                  style: TextStyle(fontWeight: FontWeight.w500),                ),
+              ],
+            ),
           ),
           const SizedBox(height: 6),
           const Divider(height: 1, color: borderColor),

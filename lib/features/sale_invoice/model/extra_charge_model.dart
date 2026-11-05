@@ -101,7 +101,7 @@ class ExtraChargeItemValue {
   bool isDiscount;
   bool isTaxApplicable;
   bool isItemQty;
-  String itemWiseDistribution;
+  String calculationType;
 
   ExtraChargeItemValue({
     required this.id,
@@ -112,7 +112,7 @@ class ExtraChargeItemValue {
     this.isDiscount = false,
     this.isTaxApplicable = false,
     this.isItemQty =false,
-    this.itemWiseDistribution= 'Amount',
+    this.calculationType= 'Amount',
   });
 
 
@@ -125,7 +125,7 @@ class ExtraChargeItemValue {
       taxType: map['taxType']?.toString() ?? '',
       isDiscount: map['isDiscount'] == true,
       isTaxApplicable: map['isTaxApplicable'] == true,
-      itemWiseDistribution: map['itemWiseDistribution']?? 'Amount',
+      calculationType: map['calculation_type']?? 'Amount',
     );
   }
 
@@ -138,7 +138,7 @@ class ExtraChargeItemValue {
       'taxType': taxType,
       'isDiscount': isDiscount,
       'isTaxApplicable': isTaxApplicable,
-      'itemWiseDistribution': itemWiseDistribution,
+      'calculation_type': calculationType,
     };
   }
 
@@ -151,6 +151,7 @@ class ExtraChargeItemValue {
       'taxType': taxType,
       'isDiscount': isDiscount? '1':'0',
       'isTaxApplicable': isTaxApplicable? '1':'0',
+      'calculation_type': calculationType?? '',
     };
   }
 }

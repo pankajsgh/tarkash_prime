@@ -211,7 +211,7 @@ class PurchaseChallanDetails {
         'taxType': e.taxType,
         'isDiscount': e.isDiscount=='1'? true: false,
         'isTaxApplicable': e.isTaxApplicable,
-        'itemWiseDistribution': '',
+        'calculation_type': e.calculationType,
       })
           .toList(),
       'finalDiscount': finalDiscount,
@@ -279,9 +279,8 @@ class PurchaseChallanItem {
     required this.brand,
   });
 
-  factory PurchaseChallanItem.fromJson(
-      Map<String, dynamic> json,
-      ) {
+  factory PurchaseChallanItem.fromJson(Map<String, dynamic> json,) {
+
     return PurchaseChallanItem(
       id: json['id']?.toString() ?? '',
 
@@ -384,6 +383,7 @@ class PurchaseChallanExtraCharge {
   final String taxType;
   final String isDiscount;
   final String isTaxApplicable;
+  final String calculationType;
 
   PurchaseChallanExtraCharge({
     required this.id,
@@ -395,6 +395,7 @@ class PurchaseChallanExtraCharge {
     required this.taxType,
     required this.isDiscount,
     required this.isTaxApplicable,
+    required this.calculationType,
   });
 
   factory PurchaseChallanExtraCharge.fromJson(
@@ -410,6 +411,7 @@ class PurchaseChallanExtraCharge {
       taxType: json['tax_type']?.toString() ?? '',
       isDiscount: json['is_discount']?.toString() ?? '0',
       isTaxApplicable: json['is_tax_applicable']?.toString() ?? '0',
+      calculationType: json['calculation_type']?.toString() ?? '',
     );
   }
 
@@ -424,6 +426,7 @@ class PurchaseChallanExtraCharge {
       'tax_type': taxType,
       'is_discount': isDiscount,
       'is_tax_applicable': isTaxApplicable,
+      'calculation_type': calculationType
     };
   }
 }

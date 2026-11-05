@@ -107,7 +107,7 @@ class ExtraChargeController extends ChangeNotifier {
         item.itemValue.isItemQty = true;
       }
 
-    item.itemValue.itemWiseDistribution = value.calculationType;
+    item.itemValue.calculationType = value.calculationType;
     item.id = value.id;
     item.itemValue.id = value.id;
     item.itemValue.name = value.chargeName;
@@ -150,7 +150,7 @@ class ExtraChargeController extends ChangeNotifier {
         }
     }
     if(!isSet) {
-      _items.add(ExtraChargeModel(id:value.id, selectChargeName: OtherChargeModel(chargeName: value.name, id: '', chargeType: '', chargeNature: '', printName: '', defaultValue: '', calculationType: value.itemWiseDistribution, appliedOn: '', distributionMethod: '', hsn: '', hsnTax: '', allowManualChange: '', isActive: '', createdAt: '', updatedAt: ''), itemValue: value));
+      _items.add(ExtraChargeModel(id:value.id, selectChargeName: OtherChargeModel(chargeName: value.name, id: '', chargeType: '', chargeNature: '', printName: '', defaultValue: '', calculationType: value.calculationType, appliedOn: '', distributionMethod: '', hsn: '', hsnTax: '', allowManualChange: '', isActive: '', createdAt: '', updatedAt: ''), itemValue: value));
     }
  }
 

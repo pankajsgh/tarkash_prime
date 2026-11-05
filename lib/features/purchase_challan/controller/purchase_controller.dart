@@ -56,6 +56,7 @@ class PurchaseController extends ChangeNotifier {
   String updateId = '';
   List<Agency> agents = [];
   double additionalDiscountTotal = 0.0;
+  double discountTotal = 0.0;
   List<double> additionalDiscountList = [];
   List<double> additionalChargeList = [];
   final List<PurchaseItem> items = [];
@@ -69,6 +70,7 @@ class PurchaseController extends ChangeNotifier {
 
   void setSeries(Series? value){
     selectedSeries = value;
+    notifyListeners();
   }
 
   String draftListKey(String supplierId) {
@@ -86,8 +88,6 @@ class PurchaseController extends ChangeNotifier {
 
    var detailApi = draftType=="purchase_challan" ? ApiPath.purchaseChallansDetailApi: ApiPath.supplierVoucherDetailApi;
 
-   print(detailApi);
-
    var response = await ApiProvider.createServerRequest(
      apiUrl: detailApi,
      requestBody: requestBody,
@@ -99,9 +99,35 @@ class PurchaseController extends ChangeNotifier {
 
        purchaseChallanDetails = PurchaseChallanDetails.fromJson(response['data']);
 
+
        if(purchaseChallanDetails!=null) {
          previousAPIData = response['data'];
-         selectSupplier = Party(id: purchaseChallanDetails!.supplierId, customerCode: '', userType: '', company: purchaseChallanDetails!.company, printName: '', name: '', mobile: '', gstNo: gstNo, status: '', address: '', pincode: '', discount: '', partyType: '');
+
+         try {
+           final response = await ApiProvider.createServerRequest(
+             apiUrl: ApiPath.getPartyDetails,
+             requestBody: {'id': purchaseChallanDetails!.supplierId},
+             isFormData: true,
+           );
+
+           if (response['error'] == true) {
+             List<BrandItem> brands = (response['data']['brands'] as List?)
+                 ?.map((e) => BrandItem.fromJson(e))
+                 .toList() ??
+                 [];
+
+              List<CategoryMargin> margins = (response['data']['margins'] as List?)
+                  ?.map((e) => CategoryMargin.fromJson(e))
+                  .toList() ??
+                  [];
+
+              GlobalVars.supplierCatMargin = margins;
+              selectSupplier = Party(id: purchaseChallanDetails!.supplierId, brandList: brands, customerCode: '', userType: '', company: purchaseChallanDetails!.company, printName: '', name: '', mobile: '', gstNo: gstNo, status: '', address: '', pincode: '', discount: '', partyType: '', categoryMargins: GlobalVars.supplierCatMargin);
+
+           }
+         } catch (e) {
+           print(e);
+         }
        }
 
 
@@ -112,11 +138,8 @@ class PurchaseController extends ChangeNotifier {
          for(var x in  purchaseChallanDetails!.items)
            {
              List<HsnTaxSlab> hsnTaxSlab =  await getHsnTaxSlab(x.productId);
-
              x.hsnTaxSlabs = hsnTaxSlab;
            }
-
-
 
          setDraftData(purchaseChallanDetails!.toDataMap());
        }
@@ -239,7 +262,12 @@ class PurchaseController extends ChangeNotifier {
     extraChargeController.delItem();
     if (map['extraCharge'] != null) {
       if (map['extraCharge'] is List && map['extraCharge'].isNotEmpty) {
+
         for (var x in map['extraCharge']) {
+
+          print("this is good 223333");
+          print(x);
+
           var extraCharges = ExtraChargeItemValue.fromJson(
             Map<String, dynamic>.from(x),
           );
@@ -307,17 +335,16 @@ class PurchaseController extends ChangeNotifier {
 
     items.clear();
 
-
-   items.addAll(
-     (map['items'] as List?)
-         ?.map(
-           (e) => PurchaseItem.fromJson(
-         Map<String, dynamic>.from(e as Map),
-       ),
-     )
-         .toList() ??
-         [],
-   );
+    items.addAll(
+      (map['items'] as List?)
+          ?.map(
+            (e) => PurchaseItem.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
+          .toList() ??
+          [],
+    );
 
     additionalChargeValue = double.tryParse(map['additionalChargeValue']?.toString() ?? '') ?? 0.0;
     finalDiscount = double.tryParse(map['finalDiscount']?.toString() ?? '')?? 0;
@@ -382,8 +409,6 @@ class PurchaseController extends ChangeNotifier {
         Map<String, dynamic> response = {};
         if(isEdit)
           {
-
-
             final Map<String, dynamic> changed = getPurchaseChallanChanges(
               postData: data,
               fetchedData: previousAPIData,
@@ -790,9 +815,14 @@ class PurchaseController extends ChangeNotifier {
   // ============================================================
 
   double valueOfTaxableGoods() {
+    discountTotal = 0.0;
     for (var x = 0; x < items.length; x++) {
+      print("this is good4488");
+      print(additionalDiscountList);
       items[x].extraDiscount = x < additionalDiscountList.length ? (additionalDiscountList[x] ) : 0.0;
       items[x].extraCharge = x < additionalChargeList.length ? (additionalChargeList[x] ) : 0.0;
+
+      discountTotal += items[x].getDiscount;
     }
     return getTotalGoodsAfterDiscountValue;
   }

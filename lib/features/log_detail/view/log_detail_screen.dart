@@ -9,12 +9,14 @@ class LogListScreen extends StatefulWidget {
   final String invId;
   final String challanNo;
   final String? title;
+  final String? type;
 
   const LogListScreen({
     super.key,
     required this.invId,
     required this.challanNo,
     this.title,
+    required this.type
   });
 
   @override
@@ -30,7 +32,7 @@ class _LogListScreenState extends State<LogListScreen> {
   @override
   void initState() {
     super.initState();
-    controller = LogController(invId: widget.invId);
+    controller = LogController(invId: widget.invId, invType: widget.type?? '');
     controller.fetchLogs();
   }
 

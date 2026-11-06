@@ -33,7 +33,7 @@ class _SupplierHeaderState extends State<SupplierHeader> {
 
   static const double fieldWidth = 230;
   static const double dateFieldWidth = 160;
-  static const double fieldHeight = 36;
+  static const double fieldHeight = 32;
 
   @override
   void initState() {
@@ -212,9 +212,7 @@ class _SupplierHeaderState extends State<SupplierHeader> {
         builder: (context, _) {
           return SearchableCustomerDropdown<StoreModel>(
             value: widget.purchaseController.selectedStore,
-            height: fieldHeight,
             borderColor: Colors.grey.shade300,
-            borderRadius: 8,
             items: controller.stores,
             onSearch: (value) {},
             displayString: (item) => item.store ?? '',
@@ -236,9 +234,7 @@ class _SupplierHeaderState extends State<SupplierHeader> {
         builder: (context, _) {
           return SearchableCustomerDropdown<TransportModel>(
             value: widget.purchaseController.selectedTransport,
-            height: fieldHeight,
             borderColor: Colors.grey.shade300,
-            borderRadius: 8,
             items: controller.transports,
             onSearch: (value) {},
             displayString: (item) => item.transport ?? '',

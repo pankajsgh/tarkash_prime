@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/ulitls/calculation.dart';
 import '../../other_charges/data/model/other_charge_model.dart';
+import '../../sale_invoice/model/sale_model.dart';
 import 'purchase_model.dart';
 
 class ExtraChargeModel {
@@ -37,8 +38,6 @@ class ExtraChargeModel {
       {
         if(itemValue.taxType!="Final Bill")
           {
-            print("this is good 44");
-            print(selectChargeName?.calculationType.trim());
             if(selectChargeName?.calculationType.trim()=='Per Main Qty')
             {
               discountList = distributeItemProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.quantity).toList());
@@ -80,6 +79,58 @@ class ExtraChargeModel {
       return tax;
     }
   }
+
+  // this is for Sales
+  double setTaxAmountSales(List<SaleItem?> item) {
+
+    var totalValue = itemValue.amount*itemMultiplier;
+
+    if(itemValue.isDiscount)
+    {
+      if(itemValue.taxType!="Final Bill")
+      {
+        if(selectChargeName?.calculationType.trim()=='Per Main Qty')
+        {
+          discountList = distributeItemProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.quantity).toList());
+        } else {
+          discountList = distributePriceProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.getItemTotalAmount).toList());
+        }
+      } else {
+        discountList = List.filled(item.length, 0.0);
+      }
+
+      taxAmount = 0;
+      return taxAmount;
+    }
+    if(itemValue.taxType=="Final Bill")
+    {
+      taxAmount = 0;
+      return taxAmount;
+    }
+
+    if(itemValue.isTaxApplicable)
+    {
+      taxAmount = totalValue * itemValue.taxPercent / 100;
+      return taxAmount;
+    } else {
+      if(selectChargeName?.calculationType.trim()=='Per Main Qty')
+      {
+        chargeList = distributeItemProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.quantity).toList());
+      } else {
+        chargeList = distributePriceProportionally(totalAmount: totalValue, proportions: item.map((e)=> e==null? 0.0:e.getFinalPriceAfterDiscount).toList());
+      }
+
+      double tax = 0;
+      for(var x=0; x<chargeList.length; x++)
+      {
+        var newTex = chargeList[x] * textToDouble(item[x]!=null? item[x]!.getGST:"0") / 100;
+        tax += newTex;
+      }
+      taxAmount = tax;
+      return tax;
+    }
+  }
+
 
   /// Amount including tax.
   double get totalAmount {

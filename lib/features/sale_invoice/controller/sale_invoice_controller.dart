@@ -14,17 +14,15 @@ import '../../../core/network/api_path.dart';
 import '../../../core/network/api_repository.dart';
 import '../../../core/widget/ratetype_field.dart';
 import '../../../core/widget/toast.dart';
-import '../../../core/widget/transport_field.dart';
 import '../../dashboard/model/store_model.dart';
-import '../../dashboard/model/transport_model.dart';
 import '../../other_charges/data/model/other_charge_model.dart';
+import '../../purchase_challan/controller/extra_charge_controller.dart';
+import '../../purchase_challan/model/extra_charge_model.dart';
 import '../../purchase_challan/model/party_model.dart';
 import '../../purchase_challan/model/product_model.dart';
 import '../../purchase_challan/model/purchase_challan_detail_model.dart';
 import '../../purchase_challan/model/agent_model.dart';
 import '../../purchase_challan/model/transport_model.dart';
-import '../model/extra_charge_model.dart';
-import 'extra_charge_controller.dart';
 
 class SaleInvoiceController extends ChangeNotifier {
   SaleInvoiceController({this.productPageType=ProductPageType.purchase});

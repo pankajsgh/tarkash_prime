@@ -39,12 +39,12 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
   int selectedRow = -1;
 
   static const List<double> _productWidths = [
-    42, 110, 210, 110, 110, 75, 100, 90, 100, 90, 95, 85, 105, 70, 65,
+    42, 110, 210, 110, 110, 75, 100, 90, 100, 90, 95, 85, 120, 70, 65,
   ];
 
   static const List<String> _productHeaders = [
     '#', 'Brand', 'Product', 'Size', 'Color', 'Qty', 'Purchase', 'MRP',
-    'Wholesale', 'Retail', 'Extra Disc.', 'Discount %', 'Amount', 'GST %',
+    'Wholesale', 'Retail', 'Extra Disc.', 'Discount %', 'Taxable Amount', 'GST %',
     'Action',
   ];
 
@@ -385,6 +385,7 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
             ),
             child: _buildProductTable(),
           ),
+          SizedBox(height: 6,)
         ],
       ),
     );
@@ -394,8 +395,16 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
-      child: SizedBox(
-        width: _productTableWidth,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(
+              color: Color(0xffD9E0E7),
+              width: 1,
+            ),
+          ),
+        ),
+        width: _productTableWidth+1,
         child: ListenableBuilder(
           listenable: widget.controller.updateSummery,
           builder: (context, _) {
@@ -445,7 +454,6 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
                   return _productRow(index, item);
                 }),
                 if (widget.controller.items.isEmpty) _emptyProducts(),
-                const SizedBox(height: 6),
               ],
             );
           },
@@ -727,7 +735,10 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
                 }
               },
               onSubmitted: (_){
-                widget.controller.addItem();
+
+               if(widget.controller.items.last.product!=null) {
+                  widget.controller.addItem();
+               }
               }
             ),
             _gridTextCell(

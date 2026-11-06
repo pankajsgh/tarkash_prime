@@ -175,9 +175,15 @@ class StateFieldState extends State<StateField> {
       isFormData: true,
     );
 
+    print("this is good 88");
+    print(response);
+
     final model = StateModel.fromJson(
       Map<String, dynamic>.from(response),
     );
+
+    print("this is good 88");
+    print(model);
 
     if (model.code == 1 && model.error == true) {
       return model.stateList;

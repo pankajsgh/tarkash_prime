@@ -272,9 +272,7 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
       builder: (context, _) {
         return SearchableCustomerDropdown<OtherChargeModel>(
           value: item.selectChargeName,
-          height: 36,
           borderColor: Colors.grey.shade300,
-          borderRadius: 4,
           dataFound: true,
           items: controller.searchCharges,
           onSearch: (value) {

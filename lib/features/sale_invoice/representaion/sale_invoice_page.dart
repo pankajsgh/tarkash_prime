@@ -5,6 +5,7 @@ import 'package:calculation_panel/core/widget/state_field.dart';
 import 'package:calculation_panel/core/widget/toast.dart';
 import 'package:calculation_panel/features/dashboard/data/controller/routes_controller.dart';
 import 'package:calculation_panel/features/sale_invoice/controller/sale_invoice_controller.dart';
+import 'package:calculation_panel/features/sale_invoice/representaion/extra_charge/extra_charge_sales.dart';
 import 'package:calculation_panel/features/sale_invoice/representaion/product_selection_section/product_selection_section.dart';
 import 'package:flutter/material.dart';
 import 'package:calculation_panel/core/theme/colors.dart';
@@ -17,8 +18,7 @@ import '../../../core/widget/store_field.dart';
 import '../../../core/widget/supplier_field.dart';
 import '../../../core/widget/team_field.dart';
 import '../../../core/widget/transport_field.dart';
-import '../../components/custome_dropdown_widget.dart';
-import 'extra_charge/extra_charge_view.dart';
+import '../../purchase_challan/representaion/extra_charge/extra_charge_view.dart';
 
 class SaleInvoicePage extends StatefulWidget {
   final String? challanId;
@@ -667,7 +667,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
 
               const SizedBox(height: 12),
 
-              ExtraChargeView(
+              ExtraChargeSales(
                 saleInvoiceController: saleInvoiceController,
               ),
 
@@ -705,7 +705,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
                 children: [
                   Expanded(
                     flex: 6,
-                    child: ExtraChargeView(
+                    child: ExtraChargeSales(
                       saleInvoiceController: saleInvoiceController,
                     ),
                   ),
@@ -745,7 +745,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
 
             Expanded(
               flex: 7,
-              child: ExtraChargeView(
+              child: ExtraChargeSales(
                 saleInvoiceController: saleInvoiceController,
               ),
             ),

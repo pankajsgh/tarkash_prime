@@ -488,9 +488,7 @@ class _CreateOtherChargeScreenState
           child: SearchableCustomerDropdown<
               OtherChargeModel>(
             value: controller.selectedCharge,
-            height: 38,
             borderColor: border,
-            borderRadius: 6,
             dataFound: controller.chargeNameController.text.length>3? true: false,
             items: controller.allCharges,
             onSearch: (value) {
@@ -527,9 +525,7 @@ class _CreateOtherChargeScreenState
       height: 38,
       child: SearchableCustomerDropdown<String>(
         value: controller.chargeType,
-        height: 38,
         borderColor: border,
-        borderRadius: 6,
         items: controller.chargeTypes
             .where(
               (e) => e != 'Select Charge Type',

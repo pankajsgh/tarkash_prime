@@ -541,7 +541,7 @@ class AutoOpenSeriesFieldState
 
   InputDecoration _decoration() {
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       borderSide: const BorderSide(color: borderColor),
     );
 
@@ -580,7 +580,7 @@ class AutoOpenSeriesFieldState
       border: border,
       enabledBorder: border,
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(
           color: Color(0xff3B82F6),
           width: 1.3,

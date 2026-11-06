@@ -481,10 +481,10 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
   // ==========================================================
 
   Widget _buildCompactRow(
-    PurchaseChallanListModel challan,
-    int index,
-    bool isExpanded,
-  ) {
+      PurchaseChallanListModel challan,
+      int index,
+      bool isExpanded,
+      ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -494,19 +494,36 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
         }
 
         return Container(
-          constraints: const BoxConstraints(minHeight: 68),
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+
+          ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _indexBox(index),
-              const SizedBox(width: 8),
-
-              Expanded(flex: 3, child: _buildMainInfo(challan)),
-
-              const SizedBox(width: 10),
-
+              // Index
               SizedBox(
-                width: 80,
+                width: 30,
+                child: _indexBox(index),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Challan information
+              Expanded(
+                flex: 3,
+                child: _buildMainInfo(challan),
+              ),
+
+              const SizedBox(width: 14),
+
+              // Store
+              SizedBox(
+                width: 105,
                 child: _compactInfo(
                   Icons.storefront_outlined,
                   'Store',
@@ -514,10 +531,11 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
                 ),
               ),
 
-              const SizedBox(width: 10),
+              const SizedBox(width: 14),
 
+              // Transport
               SizedBox(
-                width: 160,
+                width: 200,
                 child: _compactInfo(
                   Icons.local_shipping_outlined,
                   'Transport',
@@ -525,10 +543,11 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
                 ),
               ),
 
-              const SizedBox(width: 20),
+              const SizedBox(width: 14),
 
+              // Items
               SizedBox(
-                width: 48,
+                width: 55,
                 child: _compactInfo(
                   Icons.inventory_2_outlined,
                   'Items',
@@ -536,19 +555,31 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
                 ),
               ),
 
-              const SizedBox(width: 10),
+              const SizedBox(width: 14),
 
-              _buildStatus(challan.status),
-
-              const SizedBox(width: 10),
-
+              // Status
               SizedBox(
-                width: 100,
-                child: _buildGrandTotalCompact(challan.grandTotal),
+                width: 85,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildStatus(challan.status),
+                ),
               ),
 
-              const SizedBox(width: 9),
+              const SizedBox(width: 12),
 
+              // Grand Total
+              SizedBox(
+                width: 110,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _buildGrandTotalCompact(challan.grandTotal),
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              // Actions
               _buildActions(challan, isExpanded),
             ],
           ),
@@ -556,7 +587,6 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
       },
     );
   }
-
   // ==========================================================
   // SMALL COMPACT ROW
   // ==========================================================
@@ -1248,7 +1278,7 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
   Widget _buildExpandedData(PurchaseChallanListModel challan) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: const BoxDecoration(
         color: Color(0xffF8F9FA),
         border: Border(top: BorderSide(color: Color(0xffE1E4E7))),
@@ -1523,6 +1553,7 @@ class _SupplierVoucherListPageState extends State<SupplierVoucherListPage> {
               invId: challan.id.toString(),
               challanNo: challan.challanNo,
               title: challan.referenceNo,
+              type: 'supplier_voucher',
             ),
           ),
         );

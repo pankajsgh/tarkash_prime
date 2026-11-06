@@ -41,8 +41,8 @@ class SearchableCustomerDropdown<T> extends StatefulWidget {
     required this.displayString,
     this.hint = 'Select',
     this.borderColor = Colors.transparent,
-    this.borderRadius = 4.0,
-    this.height = 31,
+    this.borderRadius = 6.0,
+    this.height = 32,
     this.dataFound = true,
     this.focusNode,
     this.openOnFocus = true,
@@ -529,17 +529,10 @@ class _SearchableCustomerDropdownState<T>
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(widget.borderRadius),
         border: Border.all(
           color: const Color(0xffD6D6D6),
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
       ),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -575,7 +568,7 @@ class _SearchableCustomerDropdownState<T>
                   height: 34,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   color: highlighted
-                      ? const Color(0xffDBEAFE)
+                      ? const Color(0xffedf3ff)
                       : selected
                       ? const Color(0xffEEF2FF)
                       : Colors.transparent,
@@ -589,10 +582,10 @@ class _SearchableCustomerDropdownState<T>
                           style: TextStyle(
                             fontSize: 13,
                             color: highlighted || selected
-                                ? const Color(0xff2563EB)
+                                ? const Color(0xff5d8aef)
                                 : const Color(0xff334155),
                             fontWeight: highlighted || selected
-                                ? FontWeight.w600
+                                ? FontWeight.w400
                                 : FontWeight.w400,
                           ),
                         ),
@@ -653,6 +646,8 @@ class _SearchableCustomerDropdownState<T>
 
   @override
   Widget build(BuildContext context) {
+    const Color textLight = Color(0xff94A3B8);
+
     return CompositedTransformTarget(
       link: _layerLink,
       child: SizedBox(
@@ -683,8 +678,8 @@ class _SearchableCustomerDropdownState<T>
               ),
               hintText: widget.hint,
               hintStyle: const TextStyle(
-                fontSize: 13,
-                color: Color(0xffCBD5E1),
+                fontSize: 11,
+                color: textLight,
               ),
               suffixIcon: IgnorePointer(
                 child: Icon(

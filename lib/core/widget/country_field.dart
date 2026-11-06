@@ -115,9 +115,12 @@ class _CountryFieldState extends State<CountryField> {
     try {
       final response = await ApiProvider.createServerRequest(
         apiUrl: ApiPath.getCountryList,
-        requestBody: {},
-        isFormData: true,
+        // requestBody: {},
+        // isFormData: true,
       );
+
+      print("this is good");
+      print(response);
 
       final model = CountryListModel.fromJson(
         Map<String, dynamic>.from(response),

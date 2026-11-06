@@ -369,7 +369,7 @@ class _SupplierDropdownState extends State<SupplierDropdown> {
 
   InputDecoration _decoration() {
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       borderSide: const BorderSide(color: borderColor),
     );
 
@@ -408,7 +408,7 @@ class _SupplierDropdownState extends State<SupplierDropdown> {
       border: border,
       enabledBorder: border,
       focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(8)),
+        borderRadius: BorderRadius.all(Radius.circular(6)),
         borderSide: BorderSide(
           color: Color(0xff3B82F6),
           width: 1.3,

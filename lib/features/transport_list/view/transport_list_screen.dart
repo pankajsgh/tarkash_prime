@@ -1,11 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../core/widget/transport_field.dart';
+
 import '../../purchase_challan/model/transport_model.dart';
 import '../controller/transport_list_controller.dart';
-
-
 
 class TransportListScreen extends StatefulWidget {
   const TransportListScreen({super.key});
@@ -20,6 +17,7 @@ class _TransportListScreenState extends State<TransportListScreen> {
 
   static const Color primary = Color(0xFF3267D5);
   static const Color background = Color(0xFFF4F6FA);
+  static const Color border = Color(0xFFE5E9F0);
   static const Color textColor = Color(0xFF202939);
   static const Color muted = Color(0xFF7B8495);
 
@@ -33,6 +31,43 @@ class _TransportListScreenState extends State<TransportListScreen> {
   void dispose() {
     controller.dispose();
     super.dispose();
+  }
+
+  void _editTransport(TransportModel item) {
+    // TODO: Open your existing edit screen.
+    debugPrint('Edit transport ID: ${item.id}');
+  }
+
+  void _deleteTransport(TransportModel item) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Transport'),
+          content: Text(
+            'Are you sure you want to delete ${item.transport}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+
+                // TODO: Call your delete API here.
+                debugPrint('Delete transport ID: ${item.id}');
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -62,64 +97,50 @@ class _TransportListScreenState extends State<TransportListScreen> {
     );
   }
 
+// ==========================================================
+// HEADER
+// ==========================================================
+
   Widget _buildHeader() {
     return Container(
+      color: Colors.white,
       padding: const EdgeInsets.symmetric(
-        horizontal: 16,
+        horizontal: 15,
         vertical: 13,
       ),
-      color: Colors.white,
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.local_shipping_outlined,
-              color: primary,
-              size: 22,
-            ),
+          const Icon(
+            Icons.local_shipping_outlined,
+            color: primary,
+            size: 23,
           ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 10),
           const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Transport Directory',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Manage and view transport details',
-                  style: TextStyle(fontSize: 11, color: muted),
-                ),
-              ],
+            child: Text(
+              'Transport List',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: 9,
-              vertical: 7,
+              horizontal: 10,
+              vertical: 6,
             ),
             decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(8),
+              color: primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(5),
             ),
             child: Text(
-              '${controller.totalData} records',
+              '${controller.totalData} Records',
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
                 color: primary,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -128,37 +149,51 @@ class _TransportListScreenState extends State<TransportListScreen> {
     );
   }
 
+// ==========================================================
+// SEARCH
+// ==========================================================
+
   Widget _buildSearch() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 11, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
       child: TextField(
         controller: controller.searchController,
         onChanged: controller.onSearchChanged,
-        style: const TextStyle(fontSize: 13),
+        style: const TextStyle(
+          fontSize: 12,
+          color: textColor,
+        ),
         decoration: InputDecoration(
-          hintText: 'Search transport, owner, mobile, location...',
-          hintStyle: const TextStyle(fontSize: 12, color: muted),
-          prefixIcon: const Icon(Icons.search, color: primary, size: 21),
+          hintText: 'Search transport...',
+          hintStyle: const TextStyle(
+            fontSize: 12,
+            color: muted,
+          ),
+          prefixIcon: const Icon(
+            Icons.search,
+            size: 19,
+            color: muted,
+          ),
           suffixIcon: controller.searchController.text.isNotEmpty
               ? IconButton(
             onPressed: controller.clearSearch,
-            icon: const Icon(Icons.close, size: 19),
+            icon: const Icon(Icons.close, size: 17),
           )
               : null,
           filled: true,
           fillColor: Colors.white,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(7),
+            borderSide: const BorderSide(color: border),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(7),
+            borderSide: const BorderSide(color: border),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(7),
             borderSide: const BorderSide(color: primary),
           ),
         ),
@@ -166,253 +201,220 @@ class _TransportListScreenState extends State<TransportListScreen> {
     );
   }
 
+// ==========================================================
+// BODY
+// ==========================================================
+
   Widget _buildBody() {
     if (controller.isLoading && controller.transports.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
           color: primary,
-          strokeWidth: 2.5,
+          strokeWidth: 2,
         ),
       );
     }
 
     if (controller.errorMessage.isNotEmpty &&
         controller.transports.isEmpty) {
-      return _buildMessage(
-        icon: Icons.cloud_off_outlined,
-        title: 'Unable to load transports',
-        subtitle: controller.errorMessage,
-        action: true,
+      return _buildEmpty(
+        'Unable to load transports',
+        controller.errorMessage,
+        true,
       );
     }
 
     if (controller.transports.isEmpty) {
-      return _buildMessage(
-        icon: Icons.local_shipping_outlined,
-        title: 'No transports found',
-        subtitle: 'Try searching with another keyword.',
+      return _buildEmpty(
+        'No records found',
+        'No transport data available.',
+        false,
       );
     }
 
     return RefreshIndicator(
       color: primary,
       onRefresh: controller.refresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
-        itemCount: controller.transports.length,
-        itemBuilder: (context, index) {
-          return _transportCard(controller.transports[index]);
-        },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(10, 2, 10, 15),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: border),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            children: [
+              _buildTableHeader(),
+
+              ...List.generate(
+                controller.transports.length,
+                    (index) {
+                  return _buildTableRow(
+                    controller.transports[index],
+                    index,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _transportCard(TransportModel transport) {
-    final location = transport.location.trim();
-    final address = transport.address.trim();
-    final owner = transport.owner.trim();
-    final mobile = transport.mobile.trim();
+// ==========================================================
+// TABLE HEADER
+// ==========================================================
 
+  Widget _buildTableHeader() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 9),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE9EDF4)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 11,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF1F4F8),
+        border: Border(
+          bottom: BorderSide(color: border),
+        ),
+      ),
+      child: const Row(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(
-                  Icons.local_shipping_outlined,
-                  color: primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      transport.transport.trim().isEmpty
-                          ? 'Unnamed Transport'
-                          : transport.transport,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: textColor,
-                      ),
-                    ),
-                    if (owner.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        owner,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: muted,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '#${transport.id}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (mobile.isNotEmpty ||
-              location.isNotEmpty ||
-              address.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
-              child: Divider(height: 1, color: Color(0xFFEDF0F5)),
+          SizedBox(width: 30, child: Text('#', style: _headerStyle)),
+          Expanded(flex: 3, child: Text('Transport', style: _headerStyle)),
+          Expanded(flex: 2, child: Text('Owner', style: _headerStyle)),
+          Expanded(flex: 2, child: Text('Mobile', style: _headerStyle)),
+          SizedBox(width: 65, child: Text('Action', style: _headerStyle)),
+        ],
+      ),
+    );
+  }
+// ==========================================================
+// TABLE ROW
+// ==========================================================
+
+  Widget _buildTableRow(TransportModel item, int index) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 10,
+      ),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFEDF0F4)),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 30,
+            child: Text(
+              '${index + 1}',
+              style: _cellStyle.copyWith(color: muted),
             ),
-            Wrap(
-              spacing: 16,
-              runSpacing: 9,
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              item.transport.trim().isEmpty ? '-' : item.transport.trim(),
+              style: _cellStyle,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              item.owner.trim().isEmpty ? '-' : item.owner.trim(),
+              style: _cellStyle,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              item.mobile.trim().isEmpty ? '-' : item.mobile.trim(),
+              style: _cellStyle,
+            ),
+          ),
+          SizedBox(
+            width: 65,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                if (mobile.isNotEmpty)
-                  _infoItem(
-                    Icons.phone_outlined,
-                    mobile,
-                    onTap: () {
-                      Clipboard.setData(
-                        ClipboardData(text: mobile),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Mobile number copied'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
+                InkWell(
+                  onTap: () => _editTransport(item),
+                  child: const Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      size: 17,
+                      color: primary,
+                    ),
                   ),
-                if (location.isNotEmpty)
-                  _infoItem(Icons.location_on_outlined, location),
+                ),
+                InkWell(
+                  onTap: () => _deleteTransport(item),
+                  child: const Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 17,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
               ],
             ),
-            if (address.isNotEmpty) ...[
-              const SizedBox(height: 9),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.home_outlined,
-                    size: 15,
-                    color: muted,
-                  ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Text(
-                      address,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: muted,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _infoItem(
-      IconData icon,
-      String value, {
-        VoidCallback? onTap,
-      }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(5),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: primary),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 11,
-              color: textColor,
-              fontWeight: FontWeight.w500,
-            ),
           ),
-          if (onTap != null) ...[
-            const SizedBox(width: 4),
-            const Icon(Icons.copy, size: 12, color: muted),
-          ],
         ],
       ),
     );
   }
+// ==========================================================
+// EMPTY / ERROR
+// ==========================================================
 
-  Widget _buildMessage({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    bool action = false,
-  }) {
+  Widget _buildEmpty(
+      String title,
+      String subtitle,
+      bool showRetry,
+      ) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(25),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 42, color: Colors.grey.shade400),
+            const Icon(
+              Icons.table_rows_outlined,
+              size: 40,
+              color: muted,
+            ),
             const SizedBox(height: 12),
             Text(
               title,
-              textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontSize: 14,
                 color: textColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: muted),
+              style: const TextStyle(
+                fontSize: 11,
+                color: muted,
+              ),
             ),
-            if (action) ...[
-              const SizedBox(height: 14),
+            if (showRetry) ...[
+              const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: controller.refresh,
-                icon: const Icon(Icons.refresh, size: 17),
+                icon: const Icon(Icons.refresh, size: 16),
                 label: const Text('Retry'),
               ),
             ],
@@ -421,4 +423,16 @@ class _TransportListScreenState extends State<TransportListScreen> {
       ),
     );
   }
+
+  static const TextStyle _headerStyle = TextStyle(
+    fontSize: 10,
+    color: Color(0xFF586477),
+    fontWeight: FontWeight.w600,
+  );
+
+  static const TextStyle _cellStyle = TextStyle(
+    fontSize: 10,
+    color: textColor,
+    height: 1.4,
+  );
 }

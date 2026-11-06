@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:calculation_panel/core/theme/colors.dart';
-import 'package:calculation_panel/features/sale_invoice/controller/sale_invoice_controller.dart';
 import 'package:flutter/material.dart';
 import '../../../components/custome_dropdown_widget.dart';
 import '../../../other_charges/data/model/other_charge_model.dart';
-import 'package:calculation_panel/features/sale_invoice/model/extra_charge_model.dart';
+import '../../../purchase_challan/model/extra_charge_model.dart';
+import '../../controller/sale_invoice_controller.dart';
 
-class ExtraChargeView extends StatefulWidget {
-  const ExtraChargeView({
+class ExtraChargeSales extends StatefulWidget {
+  const ExtraChargeSales({
     super.key,
     required this.saleInvoiceController,
   });
@@ -16,14 +16,20 @@ class ExtraChargeView extends StatefulWidget {
   final SaleInvoiceController saleInvoiceController;
 
   @override
-  State<ExtraChargeView> createState() => _ExtraChargeViewState();
+  State<ExtraChargeSales> createState() => _ExtraChargeSalesState();
 }
 
-class _ExtraChargeViewState extends State<ExtraChargeView> {
+class _ExtraChargeSalesState extends State<ExtraChargeSales> {
   Timer? _searchDebounce;
   Timer? _debounce;
 
   SaleInvoiceController get purchaseController => widget.saleInvoiceController;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -102,7 +108,10 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
             height: 30,
             child: ElevatedButton.icon(
               onPressed: () {
-                purchaseController.extraChargeController.addItem();
+               if(purchaseController.selectSupplier!=null)
+                {
+                  purchaseController.extraChargeController.addItem();
+                }
               },
               icon: const Icon(
                 Icons.add,
@@ -222,17 +231,20 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
     final items = purchaseController.extraChargeController.items;
 
     if (items.isEmpty) {
-      return Container(
-        height: 130,
-        alignment: Alignment.center,
-        child: const Text(
-          'No extra charge added',
-          style: TextStyle(
-            fontSize: 11,
-            color: Color(0xff999999),
-          ),
-        ),
-      );
+
+      purchaseController.extraChargeController.addItem();
+
+      // return Container(
+      //   height: 130,
+      //   alignment: Alignment.center,
+      //   child: const Text(
+      //     'No extra charge added',
+      //     style: TextStyle(
+      //       fontSize: 11,
+      //       color: Color(0xff999999),
+      //     ),
+      //   ),
+      // );
     }
 
     return SizedBox(
@@ -252,7 +264,7 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
   // CHARGE NAME
   // ============================================================
 
-  Widget _chargesName(ExtraChargeModels item) {
+  Widget _chargesName(ExtraChargeModel item) {
     final controller = purchaseController.extraChargeController;
 
     return ListenableBuilder(
@@ -260,9 +272,7 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
       builder: (context, _) {
         return SearchableCustomerDropdown<OtherChargeModel>(
           value: item.selectChargeName,
-          height: 36,
           borderColor: Colors.grey.shade300,
-          borderRadius: 4,
           dataFound: true,
           items: controller.searchCharges,
           onSearch: (value) {
@@ -293,7 +303,7 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
   // ROW
   // ============================================================
 
-  Widget _row(ExtraChargeModels item) {
+  Widget _row(ExtraChargeModel item) {
     final chargeName = item.selectChargeName;
 
     return Padding(
@@ -370,7 +380,7 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
             Expanded(
               flex: 1,
               child:  _amount(
-                item.setTaxAmount(
+                item.setTaxAmountSales(
                   purchaseController.items,
                 ),
               )
@@ -414,7 +424,7 @@ class _ExtraChargeViewState extends State<ExtraChargeView> {
   // TAX FIELD
   // ============================================================
 
-  Widget _taxField(ExtraChargeModels item) {
+  Widget _taxField(ExtraChargeModel item) {
     final taxType =
         '${item.itemValue.isDiscount ? 'discount: ' : ''} ${item.itemValue.taxType ?? ''}';
 

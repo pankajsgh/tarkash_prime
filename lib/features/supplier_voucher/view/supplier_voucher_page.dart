@@ -882,9 +882,7 @@ class _SupplierVoucherPageState extends State<SupplierVoucherPage>
   Widget _buildAgentDropdown() {
     return SearchableCustomerDropdown<Agency>(
       value: purchaseController.selectedAgent,
-      height: 36,
       borderColor: Colors.grey.shade300,
-      borderRadius: 8,
       items: purchaseController.agents,
       onSearch: (value) {},
       displayString: (item) => item.name ?? '',
@@ -1305,7 +1303,7 @@ class _SupplierVoucherPageState extends State<SupplierVoucherPage>
     required VoidCallback onTap,
   }) {
     return SizedBox(
-      height: 34,
+      height: 30,
       child: TextField(
         controller: controller,
         readOnly: true,
@@ -1322,53 +1320,6 @@ class _SupplierVoucherPageState extends State<SupplierVoucherPage>
     );
   }
 
-  // ============================================================
-  // DROPDOWN
-  // ============================================================
-
-  Widget _dropdown({
-    required String? value,
-    required String hint,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-    IconData? prefix,
-  }) {
-    final uniqueItems = items.toSet().toList();
-    final selectedValue = uniqueItems.contains(value) ? value : null;
-
-    return SizedBox(
-      height: 39,
-      child: DropdownButtonFormField<String>(
-        initialValue: selectedValue,
-        isExpanded: true,
-        icon: const Icon(
-          Icons.keyboard_arrow_down_rounded,
-          size: 18,
-          color: textLight,
-        ),
-        decoration: _inputDecoration(
-          hint,
-          prefix: prefix,
-        ),
-        style: const TextStyle(
-          fontSize: 12,
-          color: textDark,
-        ),
-        dropdownColor: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        items: uniqueItems.map((item) {
-          return DropdownMenuItem<String>(
-            value: item,
-            child: Text(
-              item,
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        }).toList(),
-        onChanged: onChanged,
-      ),
-    );
-  }
 
   // ============================================================
   // INPUT DECORATION
@@ -1405,15 +1356,15 @@ class _SupplierVoucherPageState extends State<SupplierVoucherPage>
       ),
       isDense: true,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(color: borderColor),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(color: borderColor),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(
           color: Color(0xff3B82F6),
           width: 1.3,

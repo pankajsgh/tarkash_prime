@@ -449,9 +449,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
         value: countryList.contains(countryController.text)
             ? countryController.text
             : null,
-        height: 38,
         borderColor: border,
-        borderRadius: 7,
         hint: 'Select country',
         items: countryList,
         onSearch: (_) {},
@@ -690,7 +688,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
           filled: true,
           fillColor: white,
           contentPadding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(7),
             borderSide: const BorderSide(color: border),
@@ -1036,9 +1034,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
     SearchableCustomerDropdown<StateModelItem>(
       key: const ValueKey('party_state_dropdown'),
       value: controller.selectedState,
-      height: 38,
       borderColor: border,
-      borderRadius: 7,
       items: List<StateModelItem>.from(controller.states),
       onSearch: controller.searchStates,
       displayString: (item) => item.stateName,
@@ -1058,9 +1054,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
     SearchableCustomerDropdown<CityModelItem>(
       key: const ValueKey('party_city_dropdown'),
       value: controller.selectedCity,
-      height: 38,
       borderColor: border,
-      borderRadius: 7,
       items: List<CityModelItem>.from(controller.cities),
       onSearch: controller.searchCities,
       displayString: (item) => item.cityName,
@@ -1073,9 +1067,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
     SearchableCustomerDropdown<TransportModel>(
       key: const ValueKey('party_transport_dropdown'),
       value: controller.selectedTransport,
-      height: 38,
       borderColor: border,
-      borderRadius: 7,
       items: List<TransportModel>.from(controller.transports),
       onSearch: controller.searchTransports,
       displayString: (item) => item.transport ?? '',
@@ -1088,9 +1080,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
     SearchableCustomerDropdown<Agency>(
       key: const ValueKey('party_agent_dropdown'),
       value: controller.selectedAgent,
-      height: 38,
       borderColor: border,
-      borderRadius: 7,
       items: List<Agency>.from(controller.agents),
       onSearch: controller.searchAgents,
       displayString: (item) => item.name ?? '',
@@ -1112,9 +1102,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
         return SearchableCustomerDropdown<AccountGroup>(
           key: const ValueKey('account_group_dropdown'),
           value: controller.selectedAccountGroup,
-          height: 38,
           borderColor: border,
-          borderRadius: 7,
           items: filteredGroups,
           onSearch: (query) {
             setState(() {
@@ -1155,9 +1143,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
     SearchableCustomerDropdown<String>(
       key: const ValueKey('dealer_type_dropdown'),
       value: dealerType,
-      height: 38,
       borderColor: border,
-      borderRadius: 7,
       hint: 'Select dealer type',
       items: const [
         'Registered',
@@ -1999,9 +1985,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
       SearchableCustomerDropdown<String>(
         key: const ValueKey('gst_applicability_dropdown'),
         value: gstType,
-        height: 38,
         borderColor: border,
-        borderRadius: 7,
         hint: 'Select GST Applicability',
         items: const [
           'GST Applicable',
@@ -2041,9 +2025,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
         value: gstPercentages.contains(gstPercentage)
             ? gstPercentage
             : null,
-        height: 38,
         borderColor: border,
-        borderRadius: 7,
         hint: 'Select GST Percentage',
         items: gstPercentages,
         onSearch: (_) {},
@@ -2072,9 +2054,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
       SearchableCustomerDropdown<String>(
         key: const ValueKey('gst_itc_dropdown'),
         value: options.contains(itcEligibility) ? itcEligibility : null,
-        height: 38,
         borderColor: border,
-        borderRadius: 7,
         hint: 'Select ITC Eligibility',
         items: options,
         onSearch: (_) {},
@@ -2125,9 +2105,7 @@ class _PartyUpdateWidgetState extends State<PartyUpdateWidget> {
       SearchableCustomerDropdown<String>(
         key: const ValueKey('gst_rcm_dropdown'),
         value: options.contains(rcmNature) ? rcmNature : null,
-        height: 38,
         borderColor: border,
-        borderRadius: 7,
         hint: 'Select RCM Nature',
         items: options,
         onSearch: (_) {},

@@ -5,9 +5,10 @@ import '../../../core/network/api_repository.dart';
 import '../model/logs_model.dart';
 
 class LogController extends ChangeNotifier {
-  LogController({required this.invId});
+  LogController({required this.invId,required this.invType,});
 
   final String invId;
+  final String invType;
 
   bool isLoading = false;
   String errorMessage = '';
@@ -28,7 +29,7 @@ class LogController extends ChangeNotifier {
     try {
       final response = await ApiProvider.createServerRequest(
         apiUrl: ApiPath.logDetailList,
-        requestBody: {'inv_id': invId},
+        requestBody: {'inv_id': invId, 'inv_type': invType},
         isFormData: true,
 
       );

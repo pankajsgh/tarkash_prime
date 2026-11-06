@@ -85,7 +85,7 @@ class ApiPath {
   static String urlVoucherConfigurationUpdate = '${localUrl}update_series.php';
   static String urlVoucherConfigurationDelete = '${localUrl}delete_series.php';
   static String urlGetVoucherNo = '${localUrl}generate_sale_inv_no.php';
-  static String getCountryList = '${baseUrl}country_list.php';
+  static String getCountryList = '${localUrl}country_list.php';
   static String getLeadSourceList = '${localUrl}lead_source.php';
   static String urlVoucherConfigurationList = '${localUrl}get_voucherType.php';
   static String urlSaleInvoice = '${localUrl}submit_sales_invoice.php';

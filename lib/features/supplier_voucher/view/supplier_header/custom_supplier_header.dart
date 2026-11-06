@@ -164,19 +164,19 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(8)),
+        borderRadius: BorderRadius.all(Radius.circular(6)),
         borderSide: BorderSide(color: Colors.blue),
       ),
       disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
     );
@@ -328,7 +328,11 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
               ),
             ),
           ),
-          child,
+          SizedBox(
+            height: 32,
+            child: child,
+          )
+
         ],
       ),
     );
@@ -436,6 +440,7 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
             listenable: seriesController,
             builder: (context, child) {
               return AutoOpenSeriesField(
+                height: 32,
                 key: seriesFieldKey,
                 seriesId: '3',
                 showHeading: false,
@@ -460,9 +465,7 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
         value: widget.selectedStore,
         focusNode: storeFocusNode,
         openOnFocus: true,
-        height: fieldHeight,
         borderColor: Colors.grey.shade300,
-        borderRadius: 8,
         items: supplierController.stores,
         onSearch: (_) {},
         displayString: (store) => store.store ?? '',
@@ -485,10 +488,8 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
       child: SearchableCustomerDropdown<TransportModel>(
         value: widget.selectedTransport,
         focusNode: transportFocusNode,
-        height: fieldHeight,
         openOnFocus: true,
         borderColor: Colors.grey.shade300,
-        borderRadius: 8,
         items: supplierController.transports,
         onSearch: (_) {},
         displayString: (transport) => transport.transport ?? '',
@@ -641,8 +642,8 @@ class _CustomSupplierHeaderState extends State<CustomSupplierHeader> {
             ),
           ),
           child: Wrap(
-            spacing: 15,
-            runSpacing: 12,
+            spacing: 12,
+            runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.start,
             children: List.generate(
               7,

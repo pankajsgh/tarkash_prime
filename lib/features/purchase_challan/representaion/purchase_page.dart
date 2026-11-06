@@ -307,8 +307,8 @@ class _PurchaseChallanPageState extends State<PurchaseChallanPage> with WidgetsB
   Widget _statusBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 5,
+        horizontal: 10,
+        vertical: 3,
       ),
       decoration: BoxDecoration(
         color: const Color(0xffFFF7ED),
@@ -921,9 +921,7 @@ class _PurchaseChallanPageState extends State<PurchaseChallanPage> with WidgetsB
 
     return SearchableCustomerDropdown<Agency>(
       value: purchaseController.selectedAgent,
-      height: 36,
       borderColor: Colors.grey.shade300,
-      borderRadius: 8,
       items: purchaseController.agents,
       onSearch: (value) {},
       displayString: (item) {
@@ -1468,7 +1466,7 @@ class _PurchaseChallanPageState extends State<PurchaseChallanPage> with WidgetsB
     required VoidCallback onTap,
   }) {
     return SizedBox(
-      height: 34,
+      height: 30,
       child: TextField(
         controller: controller,
         readOnly: true,
@@ -1572,19 +1570,19 @@ class _PurchaseChallanPageState extends State<PurchaseChallanPage> with WidgetsB
       ),
       isDense: true,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(
           color: borderColor,
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(
           color: borderColor,
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(
           color: Color(0xff3B82F6),
           width: 1.3,

@@ -2,11 +2,11 @@
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_path.dart';
 import '../../../../core/network/api_repository.dart';
+import '../../../purchase_challan/model/category_model.dart';
 import '../../../purchase_challan/model/color_model.dart';
+import '../../../purchase_challan/model/hsn_model.dart';
 import '../../../purchase_challan/model/size_model.dart';
-import '../../model/category_model.dart';
-import '../../model/hsn_model.dart';
-import '../../model/sub_cat_model.dart';
+import '../../../purchase_challan/model/sub_cat_model.dart';
 
 class ProductController extends ChangeNotifier{
 

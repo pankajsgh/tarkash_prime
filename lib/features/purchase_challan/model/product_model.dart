@@ -316,19 +316,14 @@ class ProductListResponse {
 
 class ProductModel {
   final String? id;
-
   String name;
-
   ColorModel? color;
   SizeModel? size;
-
   String? supplierName;
   String? category;
   String? categoryId;
-
   HsnCodeModel? hsnCode;
   BrandModel? brand;
-
   List<HsnTaxSlab> hsnTaxSlab;
 
   String? qty;

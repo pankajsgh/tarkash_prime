@@ -141,7 +141,7 @@ class _BillingDashboardPageState extends State<BillingDashboardPage> {
 
                       if(routesController.selectedRoutes== Routes.saleInvoiceScreen)
                       {
-                        return SaleInvoicePage(routesController: routesController);
+                        return SaleInvoicePage(routesController: routesController,);
                       }
 
                       if(routesController.selectedRoutes== Routes.transportListScreen)

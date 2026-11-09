@@ -2,7 +2,6 @@ import 'package:calculation_panel/core/ulitls/debouncer.dart';
 import 'package:calculation_panel/core/ulitls/utility.dart';
 import 'package:calculation_panel/features/purchase_challan/controller/product_add_controller.dart';
 import 'package:calculation_panel/features/purchase_challan/representaion/product_selection_section/product_add_section.dart';
-import 'package:calculation_panel/features/sale_invoice/controller/sale_invoice_controller.dart';
 import 'package:calculation_panel/features/sale_invoice/representaion/product_selection_section/product_auto_complete_cell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,24 +11,25 @@ import '../../../../core/widget/toast.dart';
 import '../../../components/custome_dropdown_widget.dart';
 import '../../../purchase_challan/controller/product_controller.dart';
 import '../../../purchase_challan/model/color_model.dart';
+import '../../../purchase_challan/model/hsn_model.dart';
 import '../../../purchase_challan/model/party_model.dart';
 import '../../../purchase_challan/model/product_model.dart';
 import '../../../purchase_challan/model/size_model.dart';
-import '../../model/hsn_model.dart';
+import '../../controller/sale_invoice_controller.dart';
 
-class ProductSelectionSection extends StatefulWidget {
+class ProductSelectionSalesSection extends StatefulWidget {
 
   final SaleInvoiceController controller;
-  const ProductSelectionSection({
+  const ProductSelectionSalesSection({
     super.key,
     required this.controller,
   });
 
   @override
-  State<ProductSelectionSection> createState() => _ProductSelectionSectionState();
+  State<ProductSelectionSalesSection> createState() => _ProductSelectionSectionState();
 }
 
-class _ProductSelectionSectionState extends State<ProductSelectionSection> {
+class _ProductSelectionSectionState extends State<ProductSelectionSalesSection> {
   late ProductController productController;
 
   int selectedRow = -1;
@@ -146,13 +146,7 @@ class _ProductSelectionSectionState extends State<ProductSelectionSection> {
           widget.controller.addItem();
           widget.controller.items[index].priceController.text = x.purchasePrice;
           widget.controller.items[index].product = data;
-          widget.controller.items[index].productId = data.id;
           widget.controller.items[index].setDiscountedAmount();
-          widget.controller.selectProduct(
-              widget.controller.items[index],
-              data,
-              qty:x.quantity
-          );
         }
       }
 

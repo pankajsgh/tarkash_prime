@@ -6,23 +6,18 @@ import '../../purchase_challan/model/product_model.dart';
 
 class SaleItem {
   final String id;
-  String? productId;
   ProductModel? product;
   FocusNode articleFocusNode = FocusNode();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController brandController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
-  final TextEditingController mrpRateController = TextEditingController();
-  final TextEditingController wholesaleRateController = TextEditingController();
-  final TextEditingController retailRateController = TextEditingController();
   final TextEditingController discountController = TextEditingController();
   final FocusNode productFocusNode = FocusNode();
 
   SaleItem({
     required this.id, required void Function() onChanged,
     this.product,
-    this.productId,
     this.extraDiscount = 0,
     this.extraCharge = 0,
   }){
@@ -32,9 +27,6 @@ class SaleItem {
       brandController.text = product!.brand!=null? product!.brand!.name?? '':'';
       quantityController.text = product!.qty?? '';
       priceController.text = product!.purchaseRate ?? '';
-      mrpRateController.text =product!.mrp ?? '';
-      wholesaleRateController.text =product!.b2bPrice ?? '';
-      retailRateController.text =product!.b2cPrice ?? '';
       discountController.text =product!.discount?? '';
       setDiscountedAmount();
     }
@@ -62,18 +54,6 @@ class SaleItem {
     }
   }
 
-
-  void setMrpAmount(){
-    mrpRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: mrpPercent).toString();
-  }
-
-  void setWholesaleAmount(){
-    wholesaleRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: wholePercent).toString();
-  }
-
-  void setRetailAmount(){
-    retailRateController.text = calculatePriceAfterText(price: textToDouble(priceController.text), discount: retailPercent).toString();
-  }
 
 
   double get getItemTotalAmount {
@@ -127,7 +107,6 @@ class SaleItem {
     final item = SaleItem(
       id: json['id']?.toString() ?? '',
       onChanged: () {},
-      productId: getProductId,
       product: getProduct,
     );
 
@@ -165,7 +144,6 @@ class SaleItem {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'productId': productId?? '',
       'product': product?.toJson(),
       'amount': productPrice,
       'itemFinalPrice': getFinalPriceAfterDiscount.toString(),
@@ -178,7 +156,6 @@ class SaleItem {
   Map<String, String> toJsonApi() {
     return {
       'id': id,
-      'productId': productId ?? '',
       'amount': productPrice.toString(),
       'item_qty': product != null ? (product!.qty ?? '0') : '0',
       'size': product != null ? (product!.size?.id ?? '') : '',
@@ -198,9 +175,6 @@ class SaleItem {
     brandController.dispose();
     quantityController.dispose();
     priceController.dispose();
-    mrpRateController.dispose();
-    wholesaleRateController.dispose();
-    retailRateController.dispose();
     discountController.dispose();
     productFocusNode.dispose();
   }

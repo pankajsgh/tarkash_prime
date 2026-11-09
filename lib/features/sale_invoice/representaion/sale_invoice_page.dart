@@ -71,9 +71,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
   TextEditingController();
 
   final otherChargeController = TextEditingController();
-
   final commissionController = TextEditingController();
-
   CountryController countryController = CountryController();
   LeadSourceController leadSourceController = LeadSourceController();
   StateController stateController = StateController();
@@ -126,7 +124,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
 
   @override
   void initState() {
-    GlobalVars.globalRoutes != Routes.saleInvoiceScreen;
+    GlobalVars.globalRoutes = Routes.saleInvoiceScreen;
     // TODO: implement initState
     super.initState();
   }
@@ -155,33 +153,38 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
     return Scaffold(
       backgroundColor: pageBg,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildHeader(),
+        child: ListenableBuilder(
+          listenable:saleInvoiceController,
+          builder: (BuildContext context, Widget? child) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(),
 
-                  const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                  ProductSelectionSection(
-                    controller: saleInvoiceController,
+                      ProductSelectionSection(
+                        controller: saleInvoiceController,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      ListenableBuilder(
+                        listenable: saleInvoiceController,
+                        builder: (context, _) {
+                          return _buildBottomCards();
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+                    ],
                   ),
-
-                  const SizedBox(height: 12),
-
-                  ListenableBuilder(
-                    listenable: saleInvoiceController,
-                    builder: (context, _) {
-                      return _buildBottomCards();
-                    },
-                  ),
-
-                  const SizedBox(height: 20),
-                ],
-              ),
+                );
+              },
             );
           },
         ),
@@ -281,7 +284,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
               Expanded(
                 flex: 1,
                 child: SeriesField(
-                  seriesId: '3',
+                  seriesId: '1',
                   controller: SeriesController(),
                   onSelected: (series){
                     dateFocus.requestFocus();
@@ -505,6 +508,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
                       type: '2',
                       onSelected: (customer){
                         if(customer!=null){
+                          saleInvoiceController.setSupplier(customer);
                           nameController.text = customer.company;
                           gstController.text = customer.gstNo;
                         }
@@ -569,6 +573,7 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
                     type: '2',
                     onSelected: (customer){
                       if(customer!=null){
+                        saleInvoiceController.setSupplier(customer);
                         nameController.text = customer.company;
                         gstController.text = customer.gstNo;
                       }

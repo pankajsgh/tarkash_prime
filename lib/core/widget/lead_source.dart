@@ -7,6 +7,10 @@ import '../network/api_repository.dart';
 import '../theme/colors.dart';
 import '../ulitls/utility.dart';
 
+// ============================================================
+// LEAD SOURCE FIELD
+// ============================================================
+
 class LeadSourceField extends StatefulWidget {
   final double? width;
   final double? height;
@@ -40,14 +44,20 @@ class LeadSourceFieldState extends State<LeadSourceField> {
 
   final FocusNode _internalFocusNode = FocusNode();
 
+  final ScrollController _scrollController =
+  ScrollController();
+
+  final ValueNotifier<int> _overlayUpdater =
+  ValueNotifier<int>(0);
+
   FocusNode get _effectiveFocusNode =>
       widget.focusNode ?? _internalFocusNode;
 
-  final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<int> _overlayUpdater = ValueNotifier<int>(0);
-
-  List<LeadSource> _leadSources = [];
+  // Complete API data
   List<LeadSource> _allLeadSources = [];
+
+  // Filtered dropdown data
+  List<LeadSource> _leadSources = [];
 
   int _selectedIndex = -1;
   int _requestId = 0;
@@ -58,16 +68,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
   bool _isOpen = false;
   bool _isDisposed = false;
 
-  void focusAndOpen() {
-    if (!mounted || _isDisposed) return;
-
-    _effectiveFocusNode.requestFocus();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _isDisposed) return;
-      _openDropdown();
-    });
-  }
+  // ============================================================
+  // INIT STATE
+  // ============================================================
 
   @override
   void initState() {
@@ -81,17 +84,26 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     }
 
     _setLeadSourceText();
+
     _effectiveFocusNode.addListener(_onFocusChanged);
 
     _fetchLeadSources();
   }
+
+  // ============================================================
+  // UPDATE WIDGET
+  // ============================================================
 
   @override
   void didUpdateWidget(covariant LeadSourceField oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.focusNode != widget.focusNode) {
-      oldWidget.focusNode?.removeListener(_onFocusChanged);
+      final oldFocusNode =
+          oldWidget.focusNode ?? _internalFocusNode;
+
+      oldFocusNode.removeListener(_onFocusChanged);
+
       _effectiveFocusNode.addListener(_onFocusChanged);
     }
 
@@ -99,151 +111,36 @@ class LeadSourceFieldState extends State<LeadSourceField> {
       _setLeadSourceText();
     }
 
-    if (oldWidget.initialLeadSource != widget.initialLeadSource &&
+    if (oldWidget.initialLeadSource !=
+        widget.initialLeadSource &&
         widget.controller.value == null) {
       widget.controller.selectLeadSource(
         widget.initialLeadSource,
       );
+
       _setLeadSourceText();
     }
   }
 
-// ============================================================
-// FETCH LEAD SOURCES - NO PAGINATION
-// ============================================================
+  // ============================================================
+  // FOCUS AND OPEN
+  // ============================================================
 
-  Future<void> _fetchLeadSources() async {
-    if (_isDisposed) return;
+  void focusAndOpen() {
+    if (!mounted || _isDisposed) return;
 
-    final request = ++_requestId;
-
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _hasError = false;
-      });
-    }
-
-    _refreshOverlay();
-
-    try {
-      final result = await requestLeadSources();
-
-      if (!mounted || _isDisposed || request != _requestId) {
-        return;
-      }
-
-      setState(() {
-        _allLeadSources = result;
-        _leadSources = result;
-        _isLoading = false;
-        _hasError = false;
-      });
-
-      final selected = widget.controller.value;
-
-      if (selected != null) {
-        for (final source in result) {
-          if (source.id == selected.id) {
-            if (!identical(selected, source)) {
-              widget.controller.selectLeadSource(source);
-            }
-            break;
-          }
-        }
-      }
-
-      _refreshOverlay();
-    } catch (e) {
-      if (!mounted || _isDisposed || request != _requestId) {
-        return;
-      }
-
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-        _allLeadSources = [];
-        _leadSources = [];
-      });
-
-      printLog('leadSourceFetchError: $e');
-      _refreshOverlay();
-    }
-  }
-
-  Future<List<LeadSource>> requestLeadSources() async {
-    final response = await ApiProvider.createServerRequest(
-      apiUrl: ApiPath.getLeadSourceList,
-      requestBody: {},
-      isFormData: true,
-    );
-
-    final model = LeadSourceModel.fromJson(
-      Map<String, dynamic>.from(response),
-    );
-
-    if (model.code == 200 && model.error == true) {
-      return model.data;
-    }
-
-    return [];
-  }
-
-// ============================================================
-// SET SELECTED TEXT
-// ============================================================
-
-  void _setLeadSourceText() {
-    final text = widget.controller.value?.sourceName ?? '';
-
-    if (_textController.text == text) return;
-
-    _isUpdatingText = true;
-
-    _textController.value = TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(
-        offset: text.length,
-      ),
-    );
-
-    _isUpdatingText = false;
-  }
-
-// ============================================================
-// LOCAL SEARCH - NO API CALL
-// ============================================================
-
-  void _onTextChanged(String value) {
-    if (_isUpdatingText || _isDisposed) return;
-
-    final query = value.trim().toLowerCase();
-
-    _selectedIndex = -1;
-    _isOpen = true;
-
-    if (query.isEmpty) {
-      _leadSources = List<LeadSource>.from(_allLeadSources);
-    } else {
-      _leadSources = _allLeadSources.where((source) {
-        return source.sourceName.toLowerCase().contains(query) ||
-            source.id.contains(query);
-      }).toList();
-    }
-
-    _refreshOverlay();
+    _effectiveFocusNode.requestFocus();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
-      _scrollController.jumpTo(0);
+      if (!mounted || _isDisposed) return;
+
+      _openDropdown();
     });
   }
 
-// ============================================================
-// OPEN DROPDOWN
-// ============================================================
-
   void _openDropdown() {
+    if (_isDisposed) return;
+
     _isOpen = true;
     _selectedIndex = -1;
 
@@ -275,12 +172,194 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     _refreshOverlay();
   }
 
-// ============================================================
-// CLEAR LEAD SOURCE
-// ============================================================
+  // ============================================================
+  // FETCH LEAD SOURCES
+  // ============================================================
+
+  Future<void> _fetchLeadSources() async {
+    if (_isDisposed || _isLoading) return;
+
+    final request = ++_requestId;
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+      });
+    }
+
+    _refreshOverlay();
+
+    try {
+      final result = await requestLeadSources();
+
+      if (!mounted ||
+          _isDisposed ||
+          request != _requestId) {
+        return;
+      }
+
+      setState(() {
+        // Save complete API response.
+        _allLeadSources = List<LeadSource>.from(result);
+
+        // Display complete data initially.
+        _leadSources = List<LeadSource>.from(result);
+
+        _isLoading = false;
+        _hasError = false;
+      });
+
+      // Restore selected item using ID.
+      final selected = widget.controller.value;
+
+      if (selected != null) {
+        for (final source in _allLeadSources) {
+          if (source.id == selected.id) {
+            widget.controller.selectLeadSource(source);
+            break;
+          }
+        }
+      }
+
+      // Apply search if text already exists.
+      if (_textController.text.trim().isNotEmpty) {
+        _onTextChanged(_textController.text);
+      }
+
+      print('========== LEAD SOURCE FETCH ==========');
+      print('TOTAL RECORDS: ${_allLeadSources.length}');
+      print(
+        'SOURCES: ${_allLeadSources.map((e) => e.sourceName).toList()}',
+      );
+
+      _refreshOverlay();
+    } catch (e, stackTrace) {
+      if (!mounted ||
+          _isDisposed ||
+          request != _requestId) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _allLeadSources = [];
+        _leadSources = [];
+      });
+
+      printLog('leadSourceFetchError: $e');
+      print(stackTrace);
+
+      _refreshOverlay();
+    }
+  }
+
+  // ============================================================
+  // API REQUEST
+  // ============================================================
+
+  Future<List<LeadSource>> requestLeadSources() async {
+    final response = await ApiProvider.createServerRequest(
+      apiUrl: ApiPath.getLeadSourceList,
+      // requestBody: {},
+      // isFormData: true,
+    );
+
+    print('========== LEAD SOURCE API ==========');
+    print('API RESPONSE: $response');
+
+    final model = LeadSourceModel.fromJson(
+      Map<String, dynamic>.from(response),
+    );
+
+    print('API CODE: ${model.code}');
+    print('API ERROR: ${model.error}');
+    print('API MESSAGE: ${model.message}');
+    print('API DATA COUNT: ${model.data.length}');
+
+    // Your existing API convention uses error=true for success.
+    if ((model.code == 200 || model.code == 1) &&
+        model.error == true) {
+      return model.data;
+    }
+
+    throw Exception(
+      model.message.isNotEmpty
+          ? model.message
+          : 'Unable to fetch lead sources',
+    );
+  }
+
+  // ============================================================
+  // SET SELECTED TEXT
+  // ============================================================
+
+  void _setLeadSourceText() {
+    final text =
+        widget.controller.value?.sourceName ?? '';
+
+    if (_textController.text == text) return;
+
+    _isUpdatingText = true;
+
+    _textController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(
+        offset: text.length,
+      ),
+    );
+
+    _isUpdatingText = false;
+  }
+
+  // ============================================================
+  // LOCAL SEARCH
+  // ============================================================
+
+  void _onTextChanged(String value) {
+    if (_isUpdatingText || _isDisposed) return;
+
+    final query = value.trim().toLowerCase();
+
+    _selectedIndex = -1;
+    _isOpen = true;
+
+    if (query.isEmpty) {
+      // Restore all API records.
+      _leadSources =
+      List<LeadSource>.from(_allLeadSources);
+    } else {
+      // Filter complete cached data.
+      _leadSources = _allLeadSources.where((source) {
+        return source.sourceName
+            .toLowerCase()
+            .contains(query) ||
+            source.id.toLowerCase().contains(query) ||
+            source.status.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    _refreshOverlay();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _isDisposed ||
+          !_scrollController.hasClients) {
+        return;
+      }
+
+      _scrollController.jumpTo(0);
+    });
+  }
+
+  // ============================================================
+  // CLEAR LEAD SOURCE
+  // ============================================================
 
   void _clearText() {
     widget.controller.clear();
+
     widget.onSelected?.call(null);
 
     _isUpdatingText = true;
@@ -290,7 +369,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     _selectedIndex = -1;
     _isOpen = true;
 
-    _leadSources = List<LeadSource>.from(_allLeadSources);
+    // Restore full API list.
+    _leadSources =
+    List<LeadSource>.from(_allLeadSources);
 
     _refreshOverlay();
 
@@ -305,11 +386,13 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     });
   }
 
-// ============================================================
-// SELECT LEAD SOURCE
-// ============================================================
+  // ============================================================
+  // SELECT LEAD SOURCE
+  // ============================================================
 
   void _selectLeadSource(LeadSource source) {
+    if (_isDisposed) return;
+
     _isUpdatingText = true;
 
     _textController.value = TextEditingValue(
@@ -322,18 +405,20 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     _isUpdatingText = false;
 
     widget.controller.selectLeadSource(source);
+
     widget.onSelected?.call(source);
 
     _selectedIndex = -1;
     _isOpen = false;
 
     _effectiveFocusNode.unfocus();
+
     _refreshOverlay();
   }
 
-// ============================================================
-// KEYBOARD NAVIGATION
-// ============================================================
+  // ============================================================
+  // KEYBOARD NAVIGATION
+  // ============================================================
 
   KeyEventResult _handleKey(
       FocusNode node,
@@ -346,7 +431,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       _isOpen = false;
       _selectedIndex = -1;
+
       _effectiveFocusNode.unfocus();
+
       _refreshOverlay();
 
       return KeyEventResult.handled;
@@ -355,7 +442,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     if (event.logicalKey == LogicalKeyboardKey.enter) {
       if (_selectedIndex >= 0 &&
           _selectedIndex < _leadSources.length) {
-        _selectLeadSource(_leadSources[_selectedIndex]);
+        _selectLeadSource(
+          _leadSources[_selectedIndex],
+        );
       }
 
       return KeyEventResult.handled;
@@ -368,7 +457,8 @@ class LeadSourceFieldState extends State<LeadSourceField> {
 
       _isOpen = true;
 
-      _selectedIndex = _selectedIndex >= _leadSources.length - 1
+      _selectedIndex =
+      _selectedIndex >= _leadSources.length - 1
           ? 0
           : _selectedIndex + 1;
 
@@ -398,9 +488,17 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     return KeyEventResult.ignored;
   }
 
+  // ============================================================
+  // SCROLL TO SELECTED
+  // ============================================================
+
   void _scrollToSelected() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
+      if (!mounted ||
+          _isDisposed ||
+          !_scrollController.hasClients) {
+        return;
+      }
 
       if (_selectedIndex < 0 ||
           _selectedIndex >= _leadSources.length) {
@@ -408,6 +506,7 @@ class LeadSourceFieldState extends State<LeadSourceField> {
       }
 
       final position = _scrollController.position;
+
       final itemTop = _selectedIndex * optionHeight;
       final itemBottom = itemTop + optionHeight;
 
@@ -420,9 +519,14 @@ class LeadSourceFieldState extends State<LeadSourceField> {
         target = itemBottom - position.viewportDimension;
       }
 
-      target = target.clamp(0.0, position.maxScrollExtent);
+      target = target.clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
 
-      if ((target - position.pixels).abs() < 0.5) return;
+      if ((target - position.pixels).abs() < 0.5) {
+        return;
+      }
 
       _scrollController.animateTo(
         target,
@@ -432,20 +536,26 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     });
   }
 
+  // ============================================================
+  // REFRESH OVERLAY
+  // ============================================================
+
   void _refreshOverlay() {
     if (!_isDisposed) {
       _overlayUpdater.value++;
     }
   }
 
-// ============================================================
-// INPUT DECORATION
-// ============================================================
+  // ============================================================
+  // INPUT DECORATION
+  // ============================================================
 
   InputDecoration _decoration() {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: borderColor),
+      borderSide: const BorderSide(
+        color: borderColor,
+      ),
     );
 
     return InputDecoration(
@@ -492,9 +602,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     );
   }
 
-// ============================================================
-// DROPDOWN
-// ============================================================
+  // ============================================================
+  // DROPDOWN
+  // ============================================================
 
   Widget _dropdown() {
     if (_isLoading) {
@@ -540,12 +650,19 @@ class LeadSourceFieldState extends State<LeadSourceField> {
             color: Color(0xffE2E8F0),
           ),
           itemBuilder: (context, index) {
-            return _leadSourceItem(_leadSources[index], index);
+            return _leadSourceItem(
+              _leadSources[index],
+              index,
+            );
           },
         ),
       ),
     );
   }
+
+  // ============================================================
+  // MESSAGE DROPDOWN
+  // ============================================================
 
   Widget _messageDropdown({
     required IconData? icon,
@@ -563,7 +680,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
           width: dropdownWidth,
           height: 90,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -599,11 +718,14 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     );
   }
 
-// ============================================================
-// LEAD SOURCE OPTION
-// ============================================================
+  // ============================================================
+  // LEAD SOURCE ITEM
+  // ============================================================
 
-  Widget _leadSourceItem(LeadSource source, int index) {
+  Widget _leadSourceItem(
+      LeadSource source,
+      int index,
+      ) {
     return ValueListenableBuilder<int>(
       valueListenable: _overlayUpdater,
       builder: (context, _, __) {
@@ -653,6 +775,10 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     );
   }
 
+  // ============================================================
+  // LEAD SOURCE DETAILS
+  // ============================================================
+
   Widget _leadSourceDetails(LeadSource source) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -682,9 +808,16 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     );
   }
 
+  // ============================================================
+  // AVATAR
+  // ============================================================
+
   Widget _avatar(LeadSource source) {
     final letter = source.sourceName.trim().isNotEmpty
-        ? source.sourceName.trim().substring(0, 1).toUpperCase()
+        ? source.sourceName
+        .trim()
+        .substring(0, 1)
+        .toUpperCase()
         : '?';
 
     return Container(
@@ -706,9 +839,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     );
   }
 
-// ============================================================
-// BUILD
-// ============================================================
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -761,7 +894,11 @@ class LeadSourceFieldState extends State<LeadSourceField> {
                     ),
                   );
                 },
-                optionsViewBuilder: (context, onSelected, options) {
+                optionsViewBuilder: (
+                    context,
+                    onSelected,
+                    options,
+                    ) {
                   return ValueListenableBuilder<int>(
                     valueListenable: _overlayUpdater,
                     builder: (context, _, __) {
@@ -785,9 +922,9 @@ class LeadSourceFieldState extends State<LeadSourceField> {
     );
   }
 
-// ============================================================
-// DISPOSE
-// ============================================================
+  // ============================================================
+  // DISPOSE
+  // ============================================================
 
   @override
   void dispose() {
@@ -805,9 +942,14 @@ class LeadSourceFieldState extends State<LeadSourceField> {
   }
 }
 
+// ============================================================
+// LEAD SOURCE CONTROLLER
+// ============================================================
+
 class LeadSourceController extends ValueNotifier<LeadSource?> {
-  LeadSourceController({LeadSource? initialLeadSource})
-      : super(initialLeadSource);
+  LeadSourceController({
+    LeadSource? initialLeadSource,
+  }) : super(initialLeadSource);
 
   LeadSource? get selectedLeadSource => value;
 
@@ -819,6 +961,10 @@ class LeadSourceController extends ValueNotifier<LeadSource?> {
     value = null;
   }
 }
+
+// ============================================================
+// LEAD SOURCE MODEL
+// ============================================================
 
 class LeadSourceModel {
   final int code;
@@ -833,19 +979,33 @@ class LeadSourceModel {
     required this.data,
   });
 
-  factory LeadSourceModel.fromJson(Map<String, dynamic> json) {
+  factory LeadSourceModel.fromJson(
+      Map<String, dynamic> json,
+      ) {
+    final rawData = json['data'];
+
     return LeadSourceModel(
-      code: int.tryParse('${json['code'] ?? 0}') ?? 0,
-      error: json['error'] == true,
-      message: json['message']?.toString() ?? '',
-      data: (json['data'] as List?)
-          ?.map(
+      code: int.tryParse(
+        '${json['code'] ?? 0}',
+      ) ??
+          0,
+      error: json['error'] == true ||
+          json['error'] == 1 ||
+          json['error'] == 'true' ||
+          json['error'] == '1',
+      message: json['message']?.toString() ??
+          json['msg']?.toString() ??
+          '',
+      data: rawData is List
+          ? rawData
+          .whereType<Map>()
+          .map(
             (e) => LeadSource.fromJson(
           Map<String, dynamic>.from(e),
         ),
       )
-          .toList() ??
-          [],
+          .toList()
+          : [],
     );
   }
 
@@ -858,6 +1018,10 @@ class LeadSourceModel {
     };
   }
 }
+
+// ============================================================
+// LEAD SOURCE DATA
+// ============================================================
 
 class LeadSource {
   final String id;
@@ -874,7 +1038,9 @@ class LeadSource {
     required this.updatedAt,
   });
 
-  factory LeadSource.fromJson(Map<String, dynamic> json) {
+  factory LeadSource.fromJson(
+      Map<String, dynamic> json,
+      ) {
     return LeadSource(
       id: json['id']?.toString() ?? '',
       sourceName: json['source_name']?.toString() ?? '',
@@ -894,6 +1060,3 @@ class LeadSource {
     };
   }
 }
-
-
-

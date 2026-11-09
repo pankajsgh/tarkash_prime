@@ -1,10 +1,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../network/api_path.dart';
 import '../network/api_repository.dart';
 import '../theme/colors.dart';
 import '../ulitls/utility.dart';
+
+// ============================================================
+// STATE FIELD
+// ============================================================
 
 class StateField extends StatefulWidget {
   final double? width;
@@ -39,12 +44,19 @@ class StateFieldState extends State<StateField> {
 
   final FocusNode _internalFocusNode = FocusNode();
 
+  final ScrollController _scrollController =
+  ScrollController();
+
+  final ValueNotifier<int> _overlayUpdater =
+  ValueNotifier<int>(0);
+
   FocusNode get _effectiveFocusNode =>
       widget.focusNode ?? _internalFocusNode;
 
-  final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<int> _overlayUpdater = ValueNotifier<int>(0);
+  // Complete API data - NEVER modify this during searching.
+  List<StateData> _cachedStates = [];
 
+  // Filtered data displayed in dropdown.
   List<StateData> _states = [];
 
   int _selectedIndex = -1;
@@ -56,16 +68,11 @@ class StateFieldState extends State<StateField> {
   bool _isUpdatingText = false;
   bool _isDisposed = false;
 
-  void focusAndOpen() {
-    if (!mounted || _isDisposed) return;
+  List<StateData> get _allStates => _cachedStates;
 
-    _effectiveFocusNode.requestFocus();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _isDisposed) return;
-      _openDropdown();
-    });
-  }
+  // ============================================================
+  // INIT
+  // ============================================================
 
   @override
   void initState() {
@@ -77,6 +84,7 @@ class StateFieldState extends State<StateField> {
     }
 
     _setStateText();
+
     _effectiveFocusNode.addListener(_onFocusChanged);
 
     _fetchStates();
@@ -87,7 +95,11 @@ class StateFieldState extends State<StateField> {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.focusNode != widget.focusNode) {
-      oldWidget.focusNode?.removeListener(_onFocusChanged);
+      final oldFocusNode =
+          oldWidget.focusNode ?? _internalFocusNode;
+
+      oldFocusNode.removeListener(_onFocusChanged);
+
       _effectiveFocusNode.addListener(_onFocusChanged);
     }
 
@@ -102,9 +114,50 @@ class StateFieldState extends State<StateField> {
     }
   }
 
-// ============================================================
-// FETCH STATES - NO PAGINATION
-// ============================================================
+  // ============================================================
+  // FOCUS AND OPEN DROPDOWN
+  // ============================================================
+
+  void focusAndOpen() {
+    if (!mounted || _isDisposed) return;
+
+    _effectiveFocusNode.requestFocus();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isDisposed) return;
+
+      _openDropdown();
+    });
+  }
+
+  void _openDropdown() {
+    if (_isDisposed) return;
+
+    _isOpen = true;
+    _selectedIndex = -1;
+
+    _onTextChanged(_textController.text);
+
+    _refreshOverlay();
+  }
+
+  void _onFocusChanged() {
+    if (_isDisposed) return;
+
+    if (_effectiveFocusNode.hasFocus) {
+      _isOpen = true;
+      _onTextChanged(_textController.text);
+    } else {
+      _isOpen = false;
+      _selectedIndex = -1;
+    }
+
+    _refreshOverlay();
+  }
+
+  // ============================================================
+  // FETCH STATES API
+  // ============================================================
 
   Future<void> _fetchStates() async {
     if (_isDisposed) return;
@@ -123,45 +176,69 @@ class StateFieldState extends State<StateField> {
     try {
       final result = await requestStates();
 
-      if (!mounted || _isDisposed || request != _requestId) {
+      if (!mounted ||
+          _isDisposed ||
+          request != _requestId) {
         return;
       }
 
       setState(() {
-        _states = result;
+        // IMPORTANT FIX:
+        // Store complete API response separately.
+        _cachedStates = List<StateData>.from(result);
+
+        // Initially display all states.
+        _states = List<StateData>.from(result);
+
         _isLoading = false;
         _hasError = false;
       });
 
+      // Restore selected state from API result.
       final selected = widget.controller.value;
 
       if (selected != null) {
-        for (final state in result) {
+        for (final state in _cachedStates) {
           if (state.id == selected.id) {
-            if (!identical(selected, state)) {
-              widget.controller.selectState(state);
-            }
+            widget.controller.selectState(state);
             break;
           }
         }
       }
 
+      // Apply current search if user typed during loading.
+      if (_textController.text.trim().isNotEmpty) {
+        _onTextChanged(_textController.text);
+      }
+
+      print('STATE API SUCCESS');
+      print('Total States: ${_cachedStates.length}');
+
       _refreshOverlay();
-    } catch (e) {
-      if (!mounted || _isDisposed || request != _requestId) {
+    } catch (e, stackTrace) {
+      if (!mounted ||
+          _isDisposed ||
+          request != _requestId) {
         return;
       }
 
       setState(() {
         _isLoading = false;
         _hasError = true;
+        _cachedStates = [];
         _states = [];
       });
 
       printLog('stateFetchError: $e');
+      print(stackTrace);
+
       _refreshOverlay();
     }
   }
+
+  // ============================================================
+  // API REQUEST
+  // ============================================================
 
   Future<List<StateData>> requestStates() async {
     final Map<String, dynamic> requestBody = {
@@ -175,29 +252,35 @@ class StateFieldState extends State<StateField> {
       isFormData: true,
     );
 
-    print("this is good 88");
-    print(response);
+    print('STATE API RESPONSE: $response');
 
     final model = StateModel.fromJson(
       Map<String, dynamic>.from(response),
     );
 
-    print("this is good 88");
-    print(model);
+    print('STATE API CODE: ${model.code}');
+    print('STATE API STATUS: ${model.error}');
+    print('STATE API MESSAGE: ${model.msg}');
+    print('STATE API COUNT: ${model.stateList.length}');
 
     if (model.code == 1 && model.error == true) {
       return model.stateList;
     }
 
-    return [];
+    throw Exception(
+      model.msg.isNotEmpty
+          ? model.msg
+          : 'Unable to fetch states',
+    );
   }
 
-// ============================================================
-// SET SELECTED STATE TEXT
-// ============================================================
+  // ============================================================
+  // SET SELECTED STATE TEXT
+  // ============================================================
 
   void _setStateText() {
-    final text = widget.controller.value?.stateName ?? '';
+    final text =
+        widget.controller.value?.stateName ?? '';
 
     if (_textController.text == text) return;
 
@@ -213,9 +296,9 @@ class StateFieldState extends State<StateField> {
     _isUpdatingText = false;
   }
 
-// ============================================================
-// LOCAL TEXT SEARCH - NO API CALL
-// ============================================================
+  // ============================================================
+  // LOCAL SEARCH - NO API CALL
+  // ============================================================
 
   void _onTextChanged(String value) {
     if (_isUpdatingText || _isDisposed) return;
@@ -226,54 +309,37 @@ class StateFieldState extends State<StateField> {
     _isOpen = true;
 
     if (query.isEmpty) {
+      // Restore complete API data.
       _states = List<StateData>.from(_allStates);
     } else {
+      // Filter cached data locally.
       _states = _allStates.where((state) {
-        return state.stateName.toLowerCase().contains(query) ||
-            state.stateCode.toLowerCase().contains(query) ||
-            state.id.contains(query);
+        return state.stateName
+            .toLowerCase()
+            .contains(query) ||
+            state.stateCode
+                .toLowerCase()
+                .contains(query) ||
+            state.id.toLowerCase().contains(query);
       }).toList();
     }
 
     _refreshOverlay();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
+      if (!mounted ||
+          _isDisposed ||
+          !_scrollController.hasClients) {
+        return;
+      }
+
       _scrollController.jumpTo(0);
     });
   }
 
-  List<StateData> get _allStates => _cachedStates;
-
-// ============================================================
-// OPEN DROPDOWN
-// ============================================================
-
-  void _openDropdown() {
-    _isOpen = true;
-    _selectedIndex = -1;
-
-    _onTextChanged(_textController.text);
-    _refreshOverlay();
-  }
-
-  void _onFocusChanged() {
-    if (_isDisposed) return;
-
-    if (_effectiveFocusNode.hasFocus) {
-      _isOpen = true;
-      _onTextChanged(_textController.text);
-    } else {
-      _isOpen = false;
-      _selectedIndex = -1;
-    }
-
-    _refreshOverlay();
-  }
-
-// ============================================================
-// CLEAR STATE
-// ============================================================
+  // ============================================================
+  // CLEAR STATE
+  // ============================================================
 
   void _clearText() {
     widget.controller.clear();
@@ -286,6 +352,7 @@ class StateFieldState extends State<StateField> {
     _selectedIndex = -1;
     _isOpen = true;
 
+    // Restore all cached states.
     _states = List<StateData>.from(_allStates);
 
     _refreshOverlay();
@@ -301,11 +368,13 @@ class StateFieldState extends State<StateField> {
     });
   }
 
-// ============================================================
-// SELECT STATE
-// ============================================================
+  // ============================================================
+  // SELECT STATE
+  // ============================================================
 
   void _selectState(StateData state) {
+    if (_isDisposed) return;
+
     _isUpdatingText = true;
 
     _textController.value = TextEditingValue(
@@ -318,18 +387,20 @@ class StateFieldState extends State<StateField> {
     _isUpdatingText = false;
 
     widget.controller.selectState(state);
+
     widget.onSelected?.call(state);
 
     _selectedIndex = -1;
     _isOpen = false;
 
     _effectiveFocusNode.unfocus();
+
     _refreshOverlay();
   }
 
-// ============================================================
-// KEYBOARD NAVIGATION
-// ============================================================
+  // ============================================================
+  // KEYBOARD NAVIGATION
+  // ============================================================
 
   KeyEventResult _handleKey(
       FocusNode node,
@@ -342,7 +413,9 @@ class StateFieldState extends State<StateField> {
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       _isOpen = false;
       _selectedIndex = -1;
+
       _effectiveFocusNode.unfocus();
+
       _refreshOverlay();
 
       return KeyEventResult.handled;
@@ -364,7 +437,8 @@ class StateFieldState extends State<StateField> {
 
       _isOpen = true;
 
-      _selectedIndex = _selectedIndex >= _states.length - 1
+      _selectedIndex =
+      _selectedIndex >= _states.length - 1
           ? 0
           : _selectedIndex + 1;
 
@@ -381,7 +455,8 @@ class StateFieldState extends State<StateField> {
 
       _isOpen = true;
 
-      _selectedIndex = _selectedIndex <= 0
+      _selectedIndex =
+      _selectedIndex <= 0
           ? _states.length - 1
           : _selectedIndex - 1;
 
@@ -394,9 +469,17 @@ class StateFieldState extends State<StateField> {
     return KeyEventResult.ignored;
   }
 
+  // ============================================================
+  // SCROLL TO SELECTED ITEM
+  // ============================================================
+
   void _scrollToSelected() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
+      if (!mounted ||
+          _isDisposed ||
+          !_scrollController.hasClients) {
+        return;
+      }
 
       if (_selectedIndex < 0 ||
           _selectedIndex >= _states.length) {
@@ -404,6 +487,7 @@ class StateFieldState extends State<StateField> {
       }
 
       final position = _scrollController.position;
+
       final itemTop = _selectedIndex * optionHeight;
       final itemBottom = itemTop + optionHeight;
 
@@ -413,12 +497,18 @@ class StateFieldState extends State<StateField> {
         target = itemTop;
       } else if (itemBottom >
           position.pixels + position.viewportDimension) {
-        target = itemBottom - position.viewportDimension;
+        target =
+            itemBottom - position.viewportDimension;
       }
 
-      target = target.clamp(0.0, position.maxScrollExtent);
+      target = target.clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
 
-      if ((target - position.pixels).abs() < 0.5) return;
+      if ((target - position.pixels).abs() < 0.5) {
+        return;
+      }
 
       _scrollController.animateTo(
         target,
@@ -428,20 +518,26 @@ class StateFieldState extends State<StateField> {
     });
   }
 
+  // ============================================================
+  // REFRESH OVERLAY
+  // ============================================================
+
   void _refreshOverlay() {
     if (!_isDisposed) {
       _overlayUpdater.value++;
     }
   }
 
-// ============================================================
-// INPUT DECORATION
-// ============================================================
+  // ============================================================
+  // INPUT DECORATION
+  // ============================================================
 
   InputDecoration _decoration() {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: borderColor),
+      borderSide: const BorderSide(
+        color: borderColor,
+      ),
     );
 
     return InputDecoration(
@@ -488,9 +584,9 @@ class StateFieldState extends State<StateField> {
     );
   }
 
-// ============================================================
-// DROPDOWN
-// ============================================================
+  // ============================================================
+  // DROPDOWN
+  // ============================================================
 
   Widget _dropdown() {
     if (_isLoading) {
@@ -536,12 +632,19 @@ class StateFieldState extends State<StateField> {
             color: Color(0xffE2E8F0),
           ),
           itemBuilder: (context, index) {
-            return _stateItem(_states[index], index);
+            return _stateItem(
+              _states[index],
+              index,
+            );
           },
         ),
       ),
     );
   }
+
+  // ============================================================
+  // MESSAGE DROPDOWN
+  // ============================================================
 
   Widget _messageDropdown({
     required IconData? icon,
@@ -559,7 +662,9 @@ class StateFieldState extends State<StateField> {
           width: dropdownWidth,
           height: 90,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -595,11 +700,14 @@ class StateFieldState extends State<StateField> {
     );
   }
 
-// ============================================================
-// STATE OPTION
-// ============================================================
+  // ============================================================
+  // STATE OPTION
+  // ============================================================
 
-  Widget _stateItem(StateData state, int index) {
+  Widget _stateItem(
+      StateData state,
+      int index,
+      ) {
     return ValueListenableBuilder<int>(
       valueListenable: _overlayUpdater,
       builder: (context, _, __) {
@@ -649,6 +757,10 @@ class StateFieldState extends State<StateField> {
     );
   }
 
+  // ============================================================
+  // STATE DETAILS
+  // ============================================================
+
   Widget _stateDetails(StateData state) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -678,9 +790,16 @@ class StateFieldState extends State<StateField> {
     );
   }
 
+  // ============================================================
+  // STATE AVATAR
+  // ============================================================
+
   Widget _avatar(StateData state) {
     final letter = state.stateCode.trim().isNotEmpty
-        ? state.stateCode.trim().substring(0, 1).toUpperCase()
+        ? state.stateCode
+        .trim()
+        .substring(0, 1)
+        .toUpperCase()
         : '?';
 
     return Container(
@@ -702,9 +821,9 @@ class StateFieldState extends State<StateField> {
     );
   }
 
-// ============================================================
-// BUILD
-// ============================================================
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -730,7 +849,8 @@ class StateFieldState extends State<StateField> {
               child: RawAutocomplete<StateData>(
                 textEditingController: _textController,
                 focusNode: _effectiveFocusNode,
-                displayStringForOption: (state) => state.stateName,
+                displayStringForOption: (state) =>
+                state.stateName,
                 optionsBuilder: (TextEditingValue value) {
                   return _states;
                 },
@@ -756,7 +876,11 @@ class StateFieldState extends State<StateField> {
                     ),
                   );
                 },
-                optionsViewBuilder: (context, onSelected, options) {
+                optionsViewBuilder: (
+                    context,
+                    onSelected,
+                    options,
+                    ) {
                   return ValueListenableBuilder<int>(
                     valueListenable: _overlayUpdater,
                     builder: (context, _, __) {
@@ -780,9 +904,9 @@ class StateFieldState extends State<StateField> {
     );
   }
 
-// ============================================================
-// DISPOSE
-// ============================================================
+  // ============================================================
+  // DISPOSE
+  // ============================================================
 
   @override
   void dispose() {
@@ -798,13 +922,16 @@ class StateFieldState extends State<StateField> {
 
     super.dispose();
   }
-
-// Keep the complete API result separate from filtered results.
-  List<StateData> _cachedStates = [];
 }
 
+// ============================================================
+// STATE CONTROLLER
+// ============================================================
+
 class StateController extends ValueNotifier<StateData?> {
-  StateController({StateData? initialState}) : super(initialState);
+  StateController({
+    StateData? initialState,
+  }) : super(initialState);
 
   StateData? get selectedState => value;
 
@@ -816,6 +943,10 @@ class StateController extends ValueNotifier<StateData?> {
     value = null;
   }
 }
+
+// ============================================================
+// STATE MODEL
+// ============================================================
 
 class StateModel {
   final int code;
@@ -834,21 +965,30 @@ class StateModel {
     required this.stateList,
   });
 
-  factory StateModel.fromJson(Map<String, dynamic> json) {
+  factory StateModel.fromJson(
+      Map<String, dynamic> json,
+      ) {
+    final rawList = json['StateListList'];
+
     return StateModel(
-      code: int.tryParse('${json['code'] ?? 0}') ?? 0,
+      code: int.tryParse(
+        '${json['code'] ?? 0}',
+      ) ??
+          0,
       error: json['error'] == true,
       nums: json['nums']?.toString() ?? '0',
       totalData: json['TotalData']?.toString() ?? '0',
       msg: json['msg']?.toString() ?? '',
-      stateList: (json['StateListList'] as List?)
-          ?.map(
+      stateList: rawList is List
+          ? rawList
+          .whereType<Map>()
+          .map(
             (e) => StateData.fromJson(
           Map<String, dynamic>.from(e),
         ),
       )
-          .toList() ??
-          [],
+          .toList()
+          : [],
     );
   }
 
@@ -859,10 +999,16 @@ class StateModel {
       'nums': nums,
       'TotalData': totalData,
       'msg': msg,
-      'StateListList': stateList.map((e) => e.toJson()).toList(),
+      'StateListList': stateList
+          .map((e) => e.toJson())
+          .toList(),
     };
   }
 }
+
+// ============================================================
+// STATE DATA
+// ============================================================
 
 class StateData {
   final String id;
@@ -875,7 +1021,9 @@ class StateData {
     required this.stateCode,
   });
 
-  factory StateData.fromJson(Map<String, dynamic> json) {
+  factory StateData.fromJson(
+      Map<String, dynamic> json,
+      ) {
     return StateData(
       id: json['id']?.toString() ?? '',
       stateName: json['state_name']?.toString() ?? '',

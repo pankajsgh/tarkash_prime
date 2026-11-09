@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'core/routes/routes.dart';
 import 'core/widget/toast.dart';
+import 'features/custom_sale_invoice/main.dart';
+import 'features/custom_sale_invoice/store.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+/*  final store = AppStore();
+  await store.init();*/
+
   runApp(const MyApp());
+  // runApp(BillingApp(store: store));
+
 }
 
 // final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

@@ -44,6 +44,7 @@ dependencies:
   intl: ^0.20.3
   barcode_widget: ^2.0.4
   printing: ^5.14.2
+  path_provider: ^2.1.6
 
 
 dev_dependencies:

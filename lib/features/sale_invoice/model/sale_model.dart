@@ -13,23 +13,35 @@ class SaleItem {
   final TextEditingController quantityController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
   final TextEditingController discountController = TextEditingController();
+  final TextEditingController mrpRateController = TextEditingController();
+  final TextEditingController wholesaleRateController = TextEditingController();
+  final TextEditingController retailRateController = TextEditingController();
   final FocusNode productFocusNode = FocusNode();
+  final void Function()? onChanged;
 
   SaleItem({
-    required this.id, required void Function() onChanged,
+    required this.id,
+    this.onChanged,
     this.product,
     this.extraDiscount = 0,
     this.extraCharge = 0,
-  }){
-    if(product!=null)
-    {
+  }) {
+    if (product != null) {
       nameController.text = product!.name;
-      brandController.text = product!.brand!=null? product!.brand!.name?? '':'';
-      quantityController.text = product!.qty?? '';
+      brandController.text = product!.brand != null ? (product!.brand!.name ?? '') : '';
+      quantityController.text = product!.qty ?? '';
       priceController.text = product!.purchaseRate ?? '';
-      discountController.text =product!.discount?? '';
+      discountController.text = product!.discount ?? '';
       setDiscountedAmount();
     }
+    quantityController.addListener(_onFieldChanged);
+    priceController.addListener(_onFieldChanged);
+    discountController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    setDiscountedAmount();
+    onChanged?.call();
   }
 
   int get quantity => int.tryParse(quantityController.text) ?? 0;
@@ -171,11 +183,18 @@ class SaleItem {
 
 
   void dispose() {
+    quantityController.removeListener(_onFieldChanged);
+    priceController.removeListener(_onFieldChanged);
+    discountController.removeListener(_onFieldChanged);
     nameController.dispose();
     brandController.dispose();
     quantityController.dispose();
     priceController.dispose();
     discountController.dispose();
+    mrpRateController.dispose();
+    wholesaleRateController.dispose();
+    retailRateController.dispose();
+    articleFocusNode.dispose();
     productFocusNode.dispose();
   }
 }

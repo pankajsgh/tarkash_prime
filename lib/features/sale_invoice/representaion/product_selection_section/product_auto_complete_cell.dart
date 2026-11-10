@@ -341,9 +341,10 @@ class _ProductAutoCompleteCellState
         const SizedBox(height: 2),
         Row(
           children: [
-            if (product.barcode!.isNotEmpty)
+            if (product.barcode != null && product.barcode!.isNotEmpty)
               Flexible(
-                child: Text('${product.barcode}' ?? '',
+                child: Text(
+                  product.barcode!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

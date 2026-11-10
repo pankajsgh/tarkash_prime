@@ -58,9 +58,21 @@ Widget _buildHeader() {
               const SizedBox(width: 8),
 
               this._smallHeaderButton(
+                icon: Icons.folder_open_outlined,
+                label: 'Hold Drafts',
+                onTap: () {
+                  _showDraftListPopup(context);
+                },
+              ),
+
+              const SizedBox(width: 8),
+
+              this._smallHeaderButton(
                 icon: Icons.save_outlined,
                 label: 'Save Draft',
-                onTap: () {},
+                onTap: () {
+                  _showSaveDraftDialog(context);
+                },
               ),
             ],
           ),
@@ -95,7 +107,7 @@ Widget  _buildInvoiceFields() {
                 flex: 1,
                 child: SeriesField(
                   seriesId: '1',
-                  controller: SeriesController(),
+                  controller: seriesController,
                   onSelected: (series){
                     dateFocus.requestFocus();
                     _dateFieldKey.currentState?.openDatePicker();
@@ -143,6 +155,7 @@ Widget  _buildInvoiceFields() {
                   controller: storeController,
                   focusNode: storeFocus,
                   onSelected: (store){
+                    saleInvoiceController.setStore(store);
                     rateTypeKey.currentState?.focusAndOpen();
                   },
                 ),
@@ -235,7 +248,7 @@ Widget  _buildInvoiceFields() {
                 controller: storeController,
                 focusNode: storeFocus,
                 onSelected: (store){
-
+                  saleInvoiceController.setStore(store);
                 }
               ),
             ),
@@ -281,7 +294,9 @@ Widget  _buildInvoiceFields() {
                 controller: rateTypeController,
                 focusNode: rateFocus,
                 onSelected: (rateType){
-
+                  if (rateType != null) {
+                    saleInvoiceController.applyRateType(rateType);
+                  }
                 },
               ),
             ),
@@ -442,7 +457,12 @@ Widget _buildCustomerSection() {
                   child: this._filledButton(
                     label: 'Apply',
                     color: _SaleInvoicePageState.darkBlue,
-                    onPressed: () {},
+                    onPressed: () {
+                      if (discountController.text.isNotEmpty) {
+                        saleInvoiceController.applyDiscountController.text = discountController.text;
+                        saleInvoiceController.applyDiscountAll();
+                      }
+                    },
                   ),
                 ),
               ],

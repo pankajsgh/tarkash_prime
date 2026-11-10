@@ -37,14 +37,13 @@ class _ProductSelectionSectionState extends State<ProductSelectionSalesSection> 
     42,
     210,
     110,
-    210,
-    110,
+    140,
+    120,
     75,
+    90,
+    90,
     100,
-    100,
-    100,
-    100,
-    100,
+    60,
   ];
   static const List<String> _productHeaders = [
     '#',
@@ -510,7 +509,7 @@ class _ProductSelectionSectionState extends State<ProductSelectionSalesSection> 
             ),
 
             _tableCellCustomer(
-              width: _productWidths[1],
+              width: _productWidths[3],
               padding: EdgeInsets.zero,
               child: ListenableBuilder(listenable: productController,
                   builder: (context, _){
@@ -553,7 +552,7 @@ class _ProductSelectionSectionState extends State<ProductSelectionSalesSection> 
                         onSearch: (String? value){
                           if(value!=null)
                           {
-                            productController.getCategoryList(value!, supplierId: widget.controller.selectSupplier!.id);
+                            productController.getColorList(value);
                           }
                         },
 
@@ -682,7 +681,7 @@ class _ProductSelectionSectionState extends State<ProductSelectionSalesSection> 
       bool selected,
       ) {
     return Container(
-      width: _productWidths[8],
+      width: _productWidths[9],
       height: 34,
       decoration:
       BoxDecoration(

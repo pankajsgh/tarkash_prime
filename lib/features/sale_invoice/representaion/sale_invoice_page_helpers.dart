@@ -660,82 +660,705 @@ void _resetForm() {
       leadSource = null;
       agent = null;
       otherCharge = 'Other Charges';
-
-      products
-        ..clear()
-        ..add(0);
     });
+    saleInvoiceController.clearAll();
   }
 
-void _submitSaleInvoice(bool isUpdate) {
+Future<void> _submitSaleInvoice(bool isUpdate) async {
     if (saleInvoiceController.isSubmitting) {
       return;
     }
 
-    // ----------------------------------------------------------
-    // SUPPLIER
-    // ----------------------------------------------------------
-
     if (saleInvoiceController.selectSupplier == null) {
-      Toast.show(message: 'Please select a supplier', type: .error);
+      Toast.show(message: 'Please select a customer', type: ToastType.error);
       return;
     }
-
-    if (saleInvoiceController.challanNo.trim().isEmpty) {
-      Toast.show(message: 'Please Enter challan Nor', type: .error);
-      return;
-    }
-
-    if (saleInvoiceController.selectedData.trim().isEmpty) {
-      Toast.show(message: 'Please Select date', type: .error);
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // ITEMS
-    // ----------------------------------------------------------
 
     if (saleInvoiceController.items.isEmpty) {
-      Toast.show(message: 'No product added', type: .error);
+      Toast.show(message: 'No product added', type: ToastType.error);
       return;
     }
 
-    // ----------------------------------------------------------
-    // VALIDATE EVERY PRODUCT
-    // ----------------------------------------------------------
-
-    for (int index = 0;
-    index < saleInvoiceController.items.length;
-    index++) {
+    for (int index = 0; index < saleInvoiceController.items.length; index++) {
       final item = saleInvoiceController.items[index];
 
       if (item.product == null) {
-        Toast.show(message: 'Please select product for item ${index + 1}', type: .error);
-
+        Toast.show(message: 'Please select product for item ${index + 1}', type: ToastType.error);
         return;
       }
 
       if (item.product!.color == null) {
-        Toast.show(message: 'Please select color for item ${index + 1}', type: .error);
-
+        Toast.show(message: 'Please select color for item ${index + 1}', type: ToastType.error);
         return;
       }
 
       if (item.product!.size == null) {
-        Toast.show(message:'Please select size for item ${index + 1}', type: .error);
-
+        Toast.show(message: 'Please select size for item ${index + 1}', type: ToastType.error);
         return;
       }
 
-      if (item.productPrice == null ||
-          item.productPrice! <= 0) {
-        Toast.show(message:  'Please enter amount for item ${index + 1}', type: .error);
-
+      if (item.productPrice == null || item.productPrice! <= 0) {
+        Toast.show(message: 'Please enter amount for item ${index + 1}', type: ToastType.error);
         return;
       }
     }
 
-    // saleInvoiceController.submitChallan(isUpdate);
+    final success = await saleInvoiceController.submitSaleInvoice(isEdit: isUpdate);
+    if (success) {
+      _resetForm();
+    }
   }
 
+  Future<void> _showSaveDraftDialog(BuildContext context) async {
+    final customer = saleInvoiceController.selectSupplier;
+
+    if (customer == null) {
+      Toast.show(
+        message: 'Please select a customer',
+        type: ToastType.error,
+      );
+      return;
+    }
+
+    final challanType = saleInvoiceController.draftListKey(customer.id);
+
+    DraftModel? draftList;
+
+    try {
+      draftList = await ChallanCartStorage.getDraft(
+        challanType,
+      );
+    } catch (e) {
+      debugPrint('Get customer draft list error: $e');
+    }
+
+    final List<String> previousDraftNames = List<String>.from(
+      draftList?.draftName ?? <String>[],
+    );
+
+    if (!context.mounted) return;
+
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return _SaveDraftDialog(
+          supplierId: customer.id,
+          existingDraftNames: previousDraftNames,
+          onSave: (draftName) async {
+            final name = draftName.trim();
+            if (name.isEmpty) return false;
+
+            try {
+              final dataKey = saleInvoiceController.draftDataKey(customer.id, name);
+
+              final dataSaved = await ChallanCartStorage.save(
+                saleInvoiceController.toDataMap(),
+                key: dataKey,
+              );
+
+              if (!dataSaved) return false;
+
+              final listSaved = await ChallanCartStorage.addDraftName(
+                challanType: challanType,
+                draftId: dataKey,
+              );
+
+              if (!listSaved) return false;
+
+              return true;
+            } catch (e) {
+              debugPrint('Save sale invoice draft error: $e');
+              return false;
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Future<String?> _showDraftListPopup(BuildContext context) async {
+    final customer = saleInvoiceController.selectSupplier;
+
+    if (customer == null) {
+      Toast.show(message: 'Please select a customer', type: ToastType.error);
+      return null;
+    }
+
+    final challanType = saleInvoiceController.draftListKey(customer.id);
+
+    try {
+      final draftList = await ChallanCartStorage.getDraft(challanType);
+
+      final draftNames = List<String>.from(
+        draftList?.draftName ?? <String>[],
+      );
+
+      if (!context.mounted) return null;
+
+      if (draftNames.isEmpty) {
+        Toast.show(message: 'No saved drafts found', type: ToastType.error);
+        return null;
+      }
+
+      return await showDialog<String>(
+        context: context,
+        builder: (_) => _DraftListDialog(
+          supplierId: customer.id,
+          draftNames: draftNames,
+          onSelect: (draftName) async {
+            await saleInvoiceController.getDraftData(draftName);
+          },
+          onDelete: (draftName) async {
+            try {
+              await saleInvoiceController.deleteDraftItem(
+                partyId: customer.id,
+                draftId: draftName,
+              );
+
+              final currentList = await ChallanCartStorage.getDraft(challanType);
+
+              final updatedNames = List<String>.from(
+                currentList?.draftName ?? <String>[],
+              )..remove(draftName);
+
+              await ChallanCartStorage.saveDraft(
+                DraftModel(
+                  challanType: challanType,
+                  draftName: updatedNames,
+                ),
+              );
+
+              return true;
+            } catch (e) {
+              debugPrint('Delete sale invoice draft error: $e');
+              return false;
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('Open draft list error: $e');
+      Toast.show(message: 'Unable to load drafts', type: ToastType.error);
+      return null;
+    }
+  }
+
+}
+
+class _SaveDraftDialog extends StatefulWidget {
+  final List<String> existingDraftNames;
+  final Future<bool> Function(String draftName) onSave;
+  final String supplierId;
+
+  const _SaveDraftDialog({
+    required this.existingDraftNames,
+    required this.onSave,
+    required this.supplierId,
+  });
+
+  @override
+  State<_SaveDraftDialog> createState() => _SaveDraftDialogState();
+}
+
+class _SaveDraftDialogState extends State<_SaveDraftDialog> {
+  late final TextEditingController _controller;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onTextChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _isExist {
+    final name = _controller.text.trim();
+    return name.isNotEmpty &&
+        widget.existingDraftNames.contains('sales_invoice_${widget.supplierId}_$name');
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    final success = await widget.onSave(name);
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    setState(() => _isSaving = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        backgroundColor: Colors.red,
+        content: Text('Unable to save draft'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(20),
+      child: Container(
+        width: 420,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(
+                  Icons.save_outlined,
+                  size: 21,
+                  color: Color(0xff2563EB),
+                ),
+                SizedBox(width: 9),
+                Text(
+                  'Save Draft',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            const Text(
+              'Enter a name for this draft.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              enabled: !_isSaving,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _save(),
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Example: Customer March Order',
+                hintStyle: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+                prefixIcon: const Icon(
+                  Icons.description_outlined,
+                  size: 18,
+                ),
+                filled: true,
+                fillColor: const Color(0xffF8FAFC),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: const BorderSide(
+                    color: Color(0xff3B82F6),
+                    width: 1.3,
+                  ),
+                ),
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: _isExist
+                  ? const Padding(
+                      key: ValueKey('exists'),
+                      padding: EdgeInsets.only(top: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 15,
+                            color: Colors.orange,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'This draft already exists. Saving will overwrite its data.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(
+                      key: ValueKey('not_exists'),
+                      height: 8,
+                    ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: _isSaving
+                      ? null
+                      : () => Navigator.of(context).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(80, 36),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _isSaving || _controller.text.trim().isEmpty
+                      ? null
+                      : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2563EB),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(90, 36),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 17,
+                          height: 17,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(_isExist ? 'Overwrite' : 'Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DraftListDialog extends StatefulWidget {
+  final List<String> draftNames;
+  final String supplierId;
+  final Future<void> Function(String draftName) onSelect;
+  final Future<bool> Function(String draftName) onDelete;
+
+  const _DraftListDialog({
+    required this.draftNames,
+    required this.onSelect,
+    required this.onDelete,
+    required this.supplierId,
+  });
+
+  @override
+  State<_DraftListDialog> createState() => _DraftListDialogState();
+}
+
+class _DraftListDialogState extends State<_DraftListDialog> {
+  late List<String> _draftNames;
+  String? _deletingDraft;
+
+  @override
+  void initState() {
+    super.initState();
+    _draftNames = List<String>.from(widget.draftNames);
+  }
+
+  Future<void> _deleteDraft(String draftName) async {
+    if (_deletingDraft != null) return;
+
+    setState(() => _deletingDraft = draftName);
+
+    final success = await widget.onDelete(draftName);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        _draftNames.remove(draftName);
+        _deletingDraft = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.green,
+          content: Text('Draft deleted'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
+      if (_draftNames.isEmpty) {
+        Navigator.of(context).pop();
+      }
+
+      return;
+    }
+
+    setState(() => _deletingDraft = null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        backgroundColor: Colors.red,
+        content: Text('Unable to delete draft'),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(String draftName) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Draft?'),
+          content: Text(
+            'Delete "${getDraftName(draftName)}"? This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      await _deleteDraft(draftName);
+    }
+  }
+
+  String getDraftName(String value) {
+    final prefix = 'sales_invoice_${widget.supplierId}_';
+
+    if (value.startsWith(prefix)) {
+      return value.substring(prefix.length);
+    }
+
+    return value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(20),
+      child: Container(
+        width: 440,
+        constraints: const BoxConstraints(maxHeight: 520),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: const Color(0xffFFF7ED),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: const Icon(
+                    Icons.folder_open_outlined,
+                    size: 18,
+                    color: Color(0xffC2410C),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Hold Drafts',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xffF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_draftNames.length}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xff475569),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _draftNames.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 7),
+                itemBuilder: (context, index) {
+                  final draftName = _draftNames[index];
+                  final isDeleting = _deletingDraft == draftName;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xffF8FAFC),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(
+                        color: const Color(0xffE2E8F0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(9),
+                            onTap: isDeleting
+                                ? null
+                                : () async {
+                                    await widget.onSelect(draftName);
+
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop(draftName);
+                                    }
+                                  },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 11,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(7),
+                                    ),
+                                    child: const Icon(
+                                      Icons.description_outlined,
+                                      size: 17,
+                                      color: Color(0xff64748B),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      getDraftName(draftName),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xff1E293B),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 19,
+                                    color: Color(0xff94A3B8),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          height: 26,
+                          width: 1,
+                          color: const Color(0xffE2E8F0),
+                        ),
+                        SizedBox(
+                          width: 42,
+                          child: IconButton(
+                            onPressed: isDeleting
+                                ? null
+                                : () => _confirmDelete(draftName),
+                            padding: EdgeInsets.zero,
+                            tooltip: 'Delete draft',
+                            icon: isDeleting
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.red,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 18,
+                                    color: Color(0xffEF4444),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

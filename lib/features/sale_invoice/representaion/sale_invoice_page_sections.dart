@@ -241,7 +241,7 @@ Widget _buildLogisticsCard() {
             TransportField(
               controller: transportController,
               onSelected: (transport){
-
+                saleInvoiceController.setTransport(transport);
               },
             ),
 

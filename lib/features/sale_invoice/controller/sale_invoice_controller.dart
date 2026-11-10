@@ -2,11 +2,11 @@
   import 'package:calculation_panel/core/ulitls/utility.dart';
   import 'package:calculation_panel/core/vars/global_vars.dart';
   import 'package:calculation_panel/core/widget/widget_updater.dart';
+  import 'package:calculation_panel/core/widget/country_field.dart';
+  import 'package:calculation_panel/core/widget/state_field.dart';
+  import 'package:calculation_panel/core/widget/lead_source.dart';
   import 'package:flutter/material.dart';
-  import '../../../core/database/local_data/product_json.dart';
   import '../../../core/database/local_store_manager.dart';
-  import '../../../core/database/sql_databaes/purchase_challan_database.dart';
-  import '../../../core/enums/enums.dart';
   import '../../../core/network/api_path.dart';
   import '../../../core/network/api_repository.dart';
   import '../../../core/widget/ratetype_field.dart';
@@ -17,13 +17,13 @@
   import '../../purchase_challan/model/extra_charge_model.dart';
   import '../../purchase_challan/model/party_model.dart';
   import '../../purchase_challan/model/product_model.dart';
-  import '../../purchase_challan/model/agent_model.dart';
   import '../../purchase_challan/model/transport_model.dart';
   import '../model/sale_model.dart';
 
   class SaleInvoiceController extends ChangeNotifier {
     SaleInvoiceController();
 
+    String draftType = 'sales_invoice';
     ExtraChargeController extraChargeController = ExtraChargeController();
     final TextEditingController lrNoController = TextEditingController();
     final TextEditingController lrDateController = TextEditingController();
@@ -49,32 +49,110 @@
     List<ProductModel> products = [];
     String selectedDraft = '';
     RateType? rateType;
+    Country? selectedCountry;
+    StateData? selectedStateData;
+    LeadSource? selectedLeadSource;
     List<OtherChargeModel> chargeData = [];
+    VoidCallback? onDraftLoaded;
+
+    String draftListKey(String supplierId) {
+      return '${draftType}_draft_$supplierId';
+    }
+
+    String draftDataKey(String supplierId, String draftName) {
+      return '${draftType}_${supplierId}_${draftName.trim()}';
+    }
+
+    Future<bool> deleteDraftItem({
+      required String partyId,
+      required String draftId,
+    }) async {
+      return ChallanCartStorage.deleteDraftItemById(
+        challanType: '${draftType}_$partyId',
+        supplierId: partyId,
+        draftId: draftId,
+      );
+    }
+
+    Future deleteCurrentDraft() async {
+      if (selectSupplier != null) {
+        await ChallanCartStorage.deleteById(key: selectSupplier!.id);
+        await ChallanCartStorage.deleteById(
+          key: '${draftType}_${selectSupplier!.id}',
+        );
+      }
+    }
+
+    Future<void> getDraftData(String draftName) async {
+      final supplier = selectSupplier;
+
+      if (supplier == null) {
+        debugPrint('Cannot load draft: no customer selected');
+        return;
+      }
+
+      final name = draftName.trim();
+      if (name.isEmpty) return;
+
+      final String key = name;
+
+      try {
+        chargeData = await extraChargeController.searchOtherCharges('');
+
+        final draftData = await ChallanCartStorage.get(key);
+
+        if (draftData == null) {
+          debugPrint('Draft not found: $key');
+          notifyListeners();
+          return;
+        }
+
+        setDraftData(draftData);
+        selectedDraft = name;
+
+        if (items.isEmpty) {
+          addItem();
+        }
+
+        notifyListeners();
+        debugPrint('Draft loaded successfully: $key');
+      } catch (e, stackTrace) {
+        debugPrint('Error loading draft: $e');
+        debugPrintStack(stackTrace: stackTrace);
+        notifyListeners();
+      }
+    }
 
     void setDraftData(Map<String, dynamic> map) {
-
       extraChargeController.delItem();
-      if (map['extraCharge'] != null) {
-        if (map['extraCharge'] is List && map['extraCharge'].isNotEmpty) {
-          for (var x in map['extraCharge']) {
-
-            var extraCharges = ExtraChargeItemValue.fromJson(
-              Map<String, dynamic>.from(x),
-            );
-            extraChargeController.setItem(extraCharges, data: chargeData);
-          }
+      var extraChargeData = map['extraCharge'];
+      if (extraChargeData is String) {
+        try {
+          extraChargeData = jsonDecode(extraChargeData);
+        } catch (_) {}
+      }
+      if (extraChargeData != null && extraChargeData is List && extraChargeData.isNotEmpty) {
+        for (var x in extraChargeData) {
+          var extraCharges = ExtraChargeItemValue.fromJson(
+            Map<String, dynamic>.from(x),
+          );
+          extraChargeController.setItem(extraCharges, data: chargeData);
         }
         notifyListeners();
       }
 
       selectSupplier = map['selectSupplier'] != null
-          ? Party.fromJson(Map<String, dynamic>.from(map['selectSupplier']))
+          ? (map['selectSupplier'] is Map
+              ? Party.fromJson(Map<String, dynamic>.from(map['selectSupplier']))
+              : selectSupplier)
           : null;
 
       gstNo = map['gstNo']?.toString() ?? '';
 
       selectedStore = map['selectedStore'] != null
-          ? StoreModel.fromJson(Map<String, dynamic>.from(map['selectedStore']))
+          ? (map['selectedStore'] is String
+              ? StoreModel(id: map['selectedStore'])
+              : StoreModel.fromJson(Map<String, dynamic>.from(map['selectedStore'])))
           : null;
 
       challanNo = map['challanNo']?.toString() ?? '';
@@ -82,15 +160,35 @@
       lrNoController.text = map['lrNo']?.toString() ?? '';
       lrDateController.text = map['lrDate']?.toString() ?? '';
       remarkController.text = map['remark']?.toString() ?? '';
-      selectedTransport = map['selectedTransport'] != null
-          ? TransportModel.fromJson(
-        Map<String, dynamic>.from(map['selectedTransport']),
-      )
-          : null;
 
-      selectedAgent = map['selectedAgent']!= null
-          ? Agency.fromJson(Map<String, dynamic>.from(map['selectedAgent']))
-          : null;
+      var transportData = map['selectedTransport'];
+      if (transportData is String) {
+        selectedTransport = TransportModel(
+          id: transportData,
+          transport: '',
+          owner: '',
+          mobile: '',
+          location: '',
+          address: '',
+        );
+      } else if (transportData != null) {
+        selectedTransport = TransportModel.fromJson(
+          Map<String, dynamic>.from(transportData),
+        );
+      } else {
+        selectedTransport = null;
+      }
+
+      var agentData = map['selectedAgent'];
+      if (agentData is String) {
+        selectedAgent = Agency(id: agentData, name: '');
+      } else if (agentData != null) {
+        selectedAgent = Agency.fromJson(
+          Map<String, dynamic>.from(agentData),
+        );
+      } else {
+        selectedAgent = null;
+      }
 
       additionalDiscountTotal =
           double.tryParse(map['additionalDiscountTotal']?.toString() ?? '') ??
@@ -103,15 +201,49 @@
               [];
 
       items.clear();
-
-      ///will be check later
-      for(var x in items)
-      {
+      var rawItems = map['items'];
+      if (rawItems is String) {
+        try {
+          rawItems = jsonDecode(rawItems);
+        } catch (_) {}
+      }
+      if (rawItems != null && rawItems is List) {
+        for (var x in rawItems) {
+          if (x is Map) {
+            final item = SaleItem.fromJson(Map<String, dynamic>.from(x));
+            item.onChanged ?? () => notifyListeners();
+            items.add(item);
+          }
+        }
       }
 
       additionalChargeValue = double.tryParse(map['additionalChargeValue']?.toString() ?? '') ?? 0.0;
 
-      finalDiscount = double.tryParse(map['finalDiscount']?.toString() ?? '')?? 0;
+      additionalChargeList =
+          (map['additionalChargeList'] as List?)
+              ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
+              .toList() ??
+              [];
+
+      rateType = map['rateType'] != null
+          ? RateType.fromJson(Map<String, dynamic>.from(map['rateType']))
+          : null;
+
+      selectedCountry = map['selectedCountry'] != null
+          ? Country.fromJson(Map<String, dynamic>.from(map['selectedCountry']))
+          : null;
+
+      selectedStateData = map['selectedStateData'] != null
+          ? StateData.fromJson(Map<String, dynamic>.from(map['selectedStateData']))
+          : null;
+
+      selectedLeadSource = map['selectedLeadSource'] != null
+          ? LeadSource.fromJson(Map<String, dynamic>.from(map['selectedLeadSource']))
+          : null;
+
+      finalDiscount = double.tryParse(map['finalDiscount']?.toString() ?? '') ?? 0;
+      notifyListeners();
+      onDraftLoaded?.call();
     }
 
     void setFinalDiscount(String value){
@@ -130,8 +262,13 @@
         'remark': remarkController.text,
         'selectedTransport': selectedTransport?.toJson(),
         'selectedAgent': selectedAgent?.toJson(),
+        'selectedCountry': selectedCountry?.toJson(),
+        'selectedStateData': selectedStateData?.toJson(),
+        'selectedLeadSource': selectedLeadSource?.toJson(),
         'additionalDiscountTotal': additionalDiscountTotal,
         'additionalDiscountList': additionalDiscountList,
+        'additionalChargeList': additionalChargeList,
+        'rateType': rateType?.toJson(),
         'items': items
             .where(
               (e) =>
@@ -152,17 +289,133 @@
       };
     }
 
+    Map<String, dynamic> toJsonMap() {
+      final isInterState = selectSupplier != null &&
+          selectSupplier!.state != null &&
+          selectSupplier!.state!.id != GlobalVars.placeOfSupplyId;
+
+      return {
+        'uid': GlobalVars.userId,
+        'selectSupplier': selectSupplier?.id ?? '',
+        'gstNo': gstNo,
+        'selectedStore': selectedStore?.id ?? '',
+        'challanNo': challanNo,
+        'selectedData': selectedData,
+        'lrNo': lrNoController.text,
+        'lrDate': lrDateController.text,
+        'remark': remarkController.text,
+        'selectedTransport': selectedTransport?.id ?? '',
+        'selectedAgent': selectedAgent?.id ?? '',
+        'additionalDiscountTotal': additionalDiscountTotal.toString(),
+        'items': jsonEncode(items
+            .where((e) => e.product != null && e.product!.name.isNotEmpty)
+            .map((e) => e.toJsonApi())
+            .toList()),
+        'additionalChargeValue': additionalChargeValue.toString(),
+        'extraCharge': jsonEncode(extraChargeController.items
+            .where((e) => e.itemValue.amount > 0)
+            .map((e) => e.toDataMap())
+            .toList()),
+        'finalDiscount': finalDiscount.toString(),
+        'valueOfGood': getTotalGoodsValue.toString(),
+        'taxableDiscount': valueOfTaxableGoods().toString(),
+        if (isInterState) ...{
+          'igst': igst.toStringAsFixed(2),
+          'sgst': '',
+          'cgst': '',
+        } else ...{
+          'igst': '',
+          'sgst': sgst.toStringAsFixed(2),
+          'cgst': cgst.toStringAsFixed(2),
+        },
+        'grandTotal': grandTotal.toStringAsFixed(2),
+      };
+    }
+
+    Future<bool> saveDraft() async {
+      if (selectSupplier == null || selectSupplier!.id.isEmpty) {
+        showMessage('Please select a customer first', ToastType.info);
+        return false;
+      }
+      await ChallanCartStorage.save(toDataMap(), key: selectSupplier!.id);
+      showMessage('Draft saved successfully', ToastType.success);
+      return true;
+    }
+
+    Future<bool> submitSaleInvoice({bool isEdit = false}) async {
+      if (selectSupplier == null) {
+        showMessage('Please select a customer', ToastType.error);
+        return false;
+      }
+
+      if (items.isEmpty) {
+        showMessage('No products added', ToastType.error);
+        return false;
+      }
+
+      isSubmitting = true;
+      notifyListeners();
+      updateSummery.update();
+
+      try {
+        final requestBody = toJsonMap();
+        if (isEdit) {
+          requestBody['id'] = updateId;
+        }
+
+        final response = await ApiProvider.createServerRequest(
+          apiUrl: ApiPath.urlSaleInvoice,
+          requestBody: requestBody,
+          isFormData: true,
+        );
+
+        isSubmitting = false;
+        notifyListeners();
+        updateSummery.update();
+
+        if (response['error'] != null && response['error'] == true) {
+          showMessage(response['msg'] ?? 'Sale Invoice submitted successfully', ToastType.success);
+          await deleteCurrentDraft();
+          clearAll();
+          return true;
+        } else {
+          showMessage(response['msg'] ?? 'Failed to submit Sale Invoice', ToastType.error);
+          return false;
+        }
+      } catch (e) {
+        isSubmitting = false;
+        notifyListeners();
+        updateSummery.update();
+        showMessage('Submission error: $e', ToastType.error);
+        return false;
+      }
+    }
+
     void update() {
       notifyListeners();
     }
 
     Future<void> setSupplier(Party? value) async {
+      if (selectSupplier != null && items.isNotEmpty) {
+        await ChallanCartStorage.save(
+          toDataMap(),
+          key: '${draftType}_${selectSupplier!.id}',
+        );
+      }
+
       extraChargeController.delItem();
+      _clearItemsWithoutNotify();
+
       lrNoController.clear();
       lrDateController.clear();
+      remarkController.clear();
       finalDiscount = 0;
+      additionalDiscountTotal = 0;
+      additionalDiscountList = [];
+      additionalChargeList = [];
+      additionalChargeValue = 0;
+      selectedDraft = '';
 
-      items.clear();
       selectSupplier = value;
 
       if (value == null) {
@@ -175,11 +428,14 @@
         return;
       }
 
-      // Restore saved draft for selected supplier
-      final challanValue = await ChallanCartStorage.get(value.id);
+      chargeData = await extraChargeController.searchOtherCharges('');
 
-      if (challanValue != null) {
-        setDraftData(challanValue);
+      final Map<String, dynamic>? savedData =
+          await ChallanCartStorage.get(value.id) ??
+          await ChallanCartStorage.get('${draftType}_${value.id}');
+
+      if (savedData != null) {
+        setDraftData(savedData);
       }
 
       gstNo = value.gstNo;
@@ -207,8 +463,25 @@
       getProductList('');
     }
 
-    void setStore(StoreModel? store) {
-      selectedStore = store;
+    void _clearItemsWithoutNotify() {
+      for (final item in items) {
+        item.dispose();
+      }
+      items.clear();
+    }
+
+    void setStore(dynamic store) {
+      if (store is StoreModel) {
+        selectedStore = store;
+      } else if (store != null) {
+        selectedStore = StoreModel(
+          id: store.id,
+          store: store.store,
+          shortName: store.shortName,
+        );
+      } else {
+        selectedStore = null;
+      }
     }
 
     void setTransport(TransportModel? transport) {

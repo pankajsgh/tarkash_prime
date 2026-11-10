@@ -7,6 +7,7 @@ import 'package:calculation_panel/features/sale_invoice/controller/sale_invoice_
 import 'package:calculation_panel/features/sale_invoice/representaion/product_selection_section/product_selection_section.dart';
 import 'package:flutter/material.dart';
 import 'package:calculation_panel/core/theme/colors.dart';
+import '../../../core/database/local_store_manager.dart';
 import '../../../core/routes/routes.dart';
 import '../../../core/vars/global_vars.dart';
 import '../../../core/widget/date_field.dart';
@@ -114,12 +115,61 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
 
   String? otherCharge = 'Other Charges';
 
-  final List<int> products = [0];
-
   @override
   void initState() {
     GlobalVars.globalRoutes = Routes.saleInvoiceScreen;
-    // TODO: implement initState
+
+    countryController.addListener(() {
+      saleInvoiceController.selectedCountry = countryController.value;
+    });
+    stateController.addListener(() {
+      saleInvoiceController.selectedStateData = stateController.value;
+    });
+    leadSourceController.addListener(() {
+      saleInvoiceController.selectedLeadSource = leadSourceController.value;
+    });
+    transportController.addListener(() {
+      saleInvoiceController.selectedTransport = transportController.value;
+    });
+
+    saleInvoiceController.onDraftLoaded = () {
+      if (!mounted) return;
+      setState(() {
+        if (saleInvoiceController.selectSupplier != null) {
+          customerController.selectSupplier(saleInvoiceController.selectSupplier);
+          nameController.text = saleInvoiceController.selectSupplier!.company;
+          gstController.text = saleInvoiceController.selectSupplier!.gstNo;
+        }
+        if (saleInvoiceController.selectedStore != null) {
+          storeController.selectStore(Store(
+            id: saleInvoiceController.selectedStore!.id ?? '',
+            store: saleInvoiceController.selectedStore!.store ?? '',
+            shortName: saleInvoiceController.selectedStore!.shortName ?? '',
+          ));
+        }
+        if (saleInvoiceController.selectedTransport != null) {
+          transportController.selectTransport(saleInvoiceController.selectedTransport);
+        }
+        if (saleInvoiceController.selectedCountry != null) {
+          countryController.selectCountry(saleInvoiceController.selectedCountry);
+        }
+        if (saleInvoiceController.selectedStateData != null) {
+          stateController.selectState(saleInvoiceController.selectedStateData);
+        }
+        if (saleInvoiceController.selectedLeadSource != null) {
+          leadSourceController.selectLeadSource(saleInvoiceController.selectedLeadSource);
+        }
+        if (saleInvoiceController.rateType != null) {
+          rateTypeController.selectRateType(saleInvoiceController.rateType);
+        }
+        if (saleInvoiceController.selectedData.isNotEmpty) {
+          dateController.dateController.text = saleInvoiceController.selectedData;
+        }
+        if (saleInvoiceController.lrDateController.text.isNotEmpty) {
+          lrDateController.dateController.text = saleInvoiceController.lrDateController.text;
+        }
+      });
+    };
     super.initState();
   }
 
@@ -128,6 +178,9 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
     storeFocus.dispose();
     rateFocus.dispose();
     customerFocus.dispose();
+    teamFocus.dispose();
+    dateFocus.dispose();
+    lrDateFocus.dispose();
     invoiceController.dispose();
     dateController.dispose();
     mobileController.dispose();
@@ -139,6 +192,17 @@ class _SaleInvoicePageState extends State<SaleInvoicePage> {
     remarkController.dispose();
     otherChargeController.dispose();
     commissionController.dispose();
+    lrDateController.dispose();
+    seriesController.dispose();
+    rateTypeController.dispose();
+    storeController.dispose();
+    countryController.dispose();
+    leadSourceController.dispose();
+    stateController.dispose();
+    customerController.dispose();
+    transportController.dispose();
+    teamController.dispose();
+    saleInvoiceController.dispose();
     super.dispose();
   }
 
